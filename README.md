@@ -12,6 +12,7 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 - Uses a random free loopback port instead of assuming port `3080` is available.
 - Shows immediate, stage-based startup progress while the local Harness becomes ready.
 - Starts and stops the Harness server together with the desktop application.
+- Opens conversation files in VS Code, Cursor, VSCodium, or Zed, and exposes native menu actions for the active workspace.
 - Keeps Electron's Node integration disabled and blocks untrusted in-app navigation.
 - Includes native installers and portable packages built by GitHub Actions.
 - Supports both Intel and Apple Silicon macOS systems.
@@ -54,6 +55,8 @@ chmod +x DSH-Desktop-*.AppImage
 
 See the upstream [Web UI guide](https://deepseek-harness.github.io/deepseek-harness/guide/quickstart) for the Harness workflow.
 
+Clicking a code or text file in a conversation opens it in the detected editor. HTML, images, PDFs, and directories continue to use their system-default application. Select VS Code, Cursor, VSCodium, or Zed through **Workspace → Preferred Editor**, or open the current workspace with **Workspace → Open Workspace in Editor**. Files fall back to the system-default application when no supported editor is detected.
+
 The **View → Restart Harness** command restarts the local service. Diagnostic output is available through **Help → Open Logs Folder**.
 
 ## How it works
@@ -61,11 +64,14 @@ The **View → Restart Harness** command restarts the local service. Diagnostic 
 ```text
 DSH Desktop
 ├─ Electron main process
+│  ├─ restricted native path-opening bridge
 │  └─ bundled Electron runtime in Node mode
-│     └─ @deepseek-ai/dsh web --port 0
+│     └─ @deepseek-ai/dsh web --patch <desktop-adapter> --port 0
 └─ sandboxed Chromium window
    └─ http://127.0.0.1:<assigned-port>
 ```
+
+Desktop capabilities come from the standalone dual-face `@dsh-desktop/integration` package in this repository. At startup, the app copies only that package into the upstream `$DSH_HOME/profiles/node_modules` extension-resolution directory and loads it with a one-off `--patch`. It does not modify the `@deepseek-ai/dsh` CLI source, installation, or the user's `cordis.patch.yml`.
 
 The readiness URL is read from the official `dsh web` output. Only that exact loopback origin is allowed to remain inside the app; regular HTTP and HTTPS links open in the system browser. Closing the app terminates the local Harness process tree.
 
@@ -112,7 +118,7 @@ The workflow intentionally does not contain signing identities. Maintainers can 
 
 DeepSeek Harness is an agent harness that can read and modify selected workspace files and execute commands with the permissions you grant. Review the active workspace, model provider, and permission prompts before starting a task.
 
-The HTTP server binds only to `127.0.0.1`. The desktop renderer has no Node.js access, no preload bridge, and no permission to navigate to a different origin inside the same window. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+The HTTP server binds only to `127.0.0.1`. The desktop renderer has no Node.js access and cannot navigate to a different origin inside the same window. Its sole preload bridge accepts only two message classes from that exact Harness origin: publishing workspace scope and opening an existing path inside it. The main process resolves real paths, rejects paths and symlink escapes outside registered workspaces, and launches editors with argument arrays rather than a shell. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## Project status and trademarks
 

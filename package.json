@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Community desktop wrapper for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "src/main.js",
@@ -17,7 +17,7 @@
     "postinstall": "patch-package",
     "start": "electron .",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/startup-progress.js && node --check src/parent-watch.cjs",
+    "check": "node --check src/main.js && node --check src/desktop-integration.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/startup-progress.js && node --check src/parent-watch.cjs && node --check src/preload.cjs && node --check src/plugins/dsh-desktop-integration/lib/index.js && node --check src/plugins/dsh-desktop-integration/lib/client.js",
     "dist": "electron-builder --publish never",
     "dist:linux": "electron-builder --linux AppImage --publish never",
     "dist:mac": "electron-builder --mac dmg --publish never",

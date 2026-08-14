@@ -12,6 +12,7 @@
 - 自动使用一个空闲的本地回环端口，不会假设 `3080` 一定可用。
 - 启动后立即显示基于真实阶段的进度，直到本地 Harness 完成加载。
 - 桌面应用与 Harness 服务同时启动、同时退出。
+- 对话中的文件入口可直接调用 VS Code、Cursor、VSCodium 或 Zed，工作区也可从原生菜单交给编辑器或文件管理器打开。
 - 默认关闭 Electron Node 注入，并阻止不可信页面在应用内导航。
 - 使用 GitHub Actions 构建原生安装包和免安装版本。
 - 同时支持 Intel 与 Apple Silicon Mac。
@@ -54,6 +55,8 @@ chmod +x DSH-Desktop-*.AppImage
 
 Harness 的具体使用方式可参考上游 [Web UI 指南](https://deepseek-harness.github.io/deepseek-harness/guide/quickstart)。
 
+对话里点击代码或文本文件时，桌面适配插件会使用检测到的编辑器打开；HTML、图片、PDF 和目录仍交给系统默认程序。可以通过**工作区 → 首选编辑器**选择 VS Code、Cursor、VSCodium 或 Zed，通过**工作区 → 在编辑器中打开工作区**打开当前工作区。未检测到支持的编辑器时，文件会回退到系统默认程序。
+
 可以通过**视图 → 重启 Harness**重启本地服务，通过**帮助 → 打开日志目录**查看诊断日志。
 
 ## 工作原理
@@ -61,11 +64,14 @@ Harness 的具体使用方式可参考上游 [Web UI 指南](https://deepseek-ha
 ```text
 DSH Desktop
 ├─ Electron 主进程
+│  ├─ 受限的本地路径打开桥接
 │  └─ 以 Node 模式运行的内置 Electron
-│     └─ @deepseek-ai/dsh web --port 0
+│     └─ @deepseek-ai/dsh web --patch <桌面适配层> --port 0
 └─ 沙箱化 Chromium 窗口
    └─ http://127.0.0.1:<自动分配端口>
 ```
+
+桌面能力由本仓库内的独立双端插件 `@dsh-desktop/integration` 提供。启动时应用只把该插件复制到 `$DSH_HOME/profiles/node_modules` 的上游扩展解析目录，再用一次性 `--patch` 加载；不会修改 `@deepseek-ai/dsh` 的 CLI 源码、安装包或用户的 `cordis.patch.yml`。
 
 应用从官方 `dsh web` 的就绪输出中读取实际 URL。只有该本地回环 Origin 可以留在应用窗口中，普通 HTTP/HTTPS 外链会交给系统浏览器。退出应用时会同时终止本地 Harness 进程树。
 
@@ -112,7 +118,7 @@ git push origin HEAD --follow-tags
 
 DeepSeek Harness 是可以读取和修改所选工作区文件、并按授权执行命令的 Agent Harness。开始任务前，请检查当前工作区、模型提供方和权限提示。
 
-本地 HTTP 服务只绑定 `127.0.0.1`。桌面渲染进程无法访问 Node.js，没有 preload 桥接，也不能在同一个窗口中跳转到其他 Origin。漏洞报告方式见 [SECURITY.md](SECURITY.md)。
+本地 HTTP 服务只绑定 `127.0.0.1`。桌面渲染进程无法访问 Node.js，也不能在同一个窗口中跳转到其他 Origin。唯一的 preload 桥接只接受该 Harness Origin 发来的两类消息：发布工作区范围，以及打开其中已存在的路径。主进程会解析真实路径并拒绝工作区外路径和符号链接逃逸；启动编辑器时只使用参数数组，不经过 Shell。漏洞报告方式见 [SECURITY.md](SECURITY.md)。
 
 ## 项目状态与商标
 

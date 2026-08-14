@@ -1,9 +1,22 @@
-import { createWriteStream, existsSync, mkdirSync } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import process from 'node:process'
-import { app, BrowserWindow, Menu, dialog, shell } from 'electron'
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
+import {
+  authorizeWorkspacePath,
+  detectEditors,
+  installDesktopPlugin,
+  isTextLikePath,
+  launchEditor,
+  normalizeEditorPreference,
+  normalizeWorkspaceContext,
+  readDesktopSettings,
+  resolveHarnessHome,
+  selectedEditor,
+  writeDesktopSettings,
+} from './desktop-integration.js'
 import { HarnessServer } from './harness-server.js'
 import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
 import { loadingStateScript, normalizeProgress } from './startup-progress.js'
@@ -31,6 +44,13 @@ function setLocale(locale) {
       zoomIn: '放大',
       zoomOut: '缩小',
       window: '窗口',
+      workspace: '工作区',
+      openWorkspaceInEditor: '在编辑器中打开工作区',
+      openWorkspaceFolder: '在文件管理器中打开',
+      preferredEditor: '首选编辑器',
+      automaticEditor: '自动选择',
+      noEditor: '未检测到受支持的编辑器',
+      nativeOpenFailed: '无法打开本地路径',
     } : {
       preparing: 'Preparing the desktop window…',
       loading: 'Starting DeepSeek Harness…',
@@ -48,6 +68,13 @@ function setLocale(locale) {
       zoomIn: 'Zoom In',
       zoomOut: 'Zoom Out',
       window: 'Window',
+      workspace: 'Workspace',
+      openWorkspaceInEditor: 'Open Workspace in Editor',
+      openWorkspaceFolder: 'Open in File Manager',
+      preferredEditor: 'Preferred Editor',
+      automaticEditor: 'Automatic',
+      noEditor: 'No supported editor detected',
+      nativeOpenFailed: 'Could Not Open Local Path',
     }
 }
 
@@ -62,11 +89,104 @@ let restartGeneration = 0
 let loadingProgress = 0
 let logStream
 let logPath
+let activeWorkspace
+let workspaceRoots = []
+let editors = []
+let editorPreference = 'auto'
+let desktopSettingsPath
+let desktopIpcInstalled = false
 
 function writeLog(source, text) {
   const prefix = `[${new Date().toISOString()}] [${source}] `
   logStream?.write(`${prefix}${text}`)
   if (!app.isPackaged) process[source === 'stderr' ? 'stderr' : 'stdout'].write(text)
+}
+
+function selectedDesktopEditor() {
+  return selectedEditor(editors, editorPreference)
+}
+
+function senderIsHarness(event) {
+  if (harnessOrigin === undefined || mainWindow?.isDestroyed() !== false) return false
+  if (event.sender !== mainWindow.webContents) return false
+  try {
+    return new URL(event.senderFrame?.url ?? event.sender.getURL()).origin === harnessOrigin
+  } catch {
+    return false
+  }
+}
+
+async function openSystemPath(path) {
+  const error = await shell.openPath(path)
+  if (error !== '') throw new Error(error)
+}
+
+async function openDesktopPath(path, intent = 'auto') {
+  const target = authorizeWorkspacePath(path, workspaceRoots)
+  const stats = statSync(target)
+  const editor = selectedDesktopEditor()
+  const useEditor = intent === 'editor' || (intent === 'auto' && stats.isFile() && isTextLikePath(target))
+
+  if (useEditor) {
+    if (editor === undefined) {
+      if (intent === 'editor') throw new Error(copy.noEditor)
+    } else {
+      await launchEditor(editor, target)
+      return
+    }
+  }
+  await openSystemPath(target)
+}
+
+async function reportDesktopAction(action) {
+  try {
+    await action()
+    return { ok: true }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    writeLog('stderr', `${copy.nativeOpenFailed}: ${detail}\n`)
+    if (mainWindow?.isDestroyed() === false) {
+      void dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: copy.nativeOpenFailed,
+        message: copy.nativeOpenFailed,
+        detail,
+      })
+    }
+    return { ok: false, error: detail }
+  }
+}
+
+function saveEditorPreference(preference) {
+  editorPreference = normalizeEditorPreference(preference, editors)
+  if (desktopSettingsPath !== undefined) {
+    writeDesktopSettings(desktopSettingsPath, { editor: editorPreference })
+  }
+  buildMenu()
+}
+
+function installDesktopIpc() {
+  if (desktopIpcInstalled) return
+  desktopIpcInstalled = true
+  ipcMain.handle('dsh-desktop:open-path', (event, path) => {
+    if (!senderIsHarness(event)) return { ok: false, error: 'Untrusted path-open request' }
+    return reportDesktopAction(() => openDesktopPath(path))
+  })
+  ipcMain.on('dsh-desktop:workspace-context', (event, value) => {
+    if (!senderIsHarness(event)) return
+    const next = normalizeWorkspaceContext(value)
+    const activeChanged = next.active !== activeWorkspace
+    activeWorkspace = next.active
+    workspaceRoots = next.roots
+    if (activeChanged) buildMenu()
+  })
+}
+
+function clearWorkspaceContext() {
+  if (activeWorkspace === undefined && workspaceRoots.length === 0) return
+  activeWorkspace = undefined
+  workspaceRoots = []
+  buildMenu()
 }
 
 function resolveDshEntry() {
@@ -100,6 +220,7 @@ async function showLoading(message = copy.preparing, progress = 8, generation = 
   const window = currentLoadingWindow()
   if (window === undefined) return
   harnessOrigin = undefined
+  clearWorkspaceContext()
   await window.loadFile(pagePath('loading.html'), {
     query: { lang: isChinese ? 'zh' : 'en', message, progress: String(progress) },
   })
@@ -132,6 +253,7 @@ function revealMainWindow() {
 async function showError(title, error) {
   if (mainWindow?.isDestroyed() !== false || quitting) return
   harnessOrigin = undefined
+  clearWorkspaceContext()
   const detail = error instanceof Error ? error.message : String(error)
   writeLog('desktop', `${title}: ${detail}\n`)
   await mainWindow.loadFile(pagePath('error.html'), {
@@ -182,6 +304,7 @@ function createWindow() {
     icon: join(import.meta.dirname, '..', 'assets', 'icon.png'),
     backgroundColor: '#f6f8fc',
     webPreferences: {
+      preload: join(import.meta.dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -243,6 +366,8 @@ async function startHarness(message = copy.preparing) {
         join(import.meta.dirname, 'parent-watch.cjs'),
         resolveDshEntry(),
         'web',
+        '--patch',
+        join(import.meta.dirname, 'dsh-desktop.patch.yml'),
         '--port',
         '0',
       ],
@@ -292,9 +417,49 @@ async function startHarness(message = copy.preparing) {
 }
 
 function buildMenu() {
+  const editor = selectedDesktopEditor()
+  const editorItems = editors.length === 0
+    ? [{ label: copy.noEditor, enabled: false }]
+    : [
+        {
+          label: editor === undefined ? copy.automaticEditor : `${copy.automaticEditor} (${editor.label})`,
+          type: 'radio',
+          checked: editorPreference === 'auto',
+          click: () => saveEditorPreference('auto'),
+        },
+        { type: 'separator' },
+        ...editors.map(candidate => ({
+          label: candidate.label,
+          type: 'radio',
+          checked: editorPreference === candidate.id,
+          click: () => saveEditorPreference(candidate.id),
+        })),
+      ]
   const template = [
     ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
     { role: 'editMenu' },
+    {
+      label: copy.workspace,
+      submenu: [
+        {
+          label: copy.openWorkspaceInEditor,
+          accelerator: 'CmdOrCtrl+Shift+O',
+          enabled: activeWorkspace !== undefined && editor !== undefined,
+          click: () => {
+            if (activeWorkspace !== undefined) void reportDesktopAction(() => openDesktopPath(activeWorkspace, 'editor'))
+          },
+        },
+        {
+          label: copy.openWorkspaceFolder,
+          enabled: activeWorkspace !== undefined,
+          click: () => {
+            if (activeWorkspace !== undefined) void reportDesktopAction(() => openDesktopPath(activeWorkspace, 'default'))
+          },
+        },
+        { type: 'separator' },
+        { label: copy.preferredEditor, submenu: editorItems },
+      ],
+    },
     {
       label: copy.view,
       submenu: [
@@ -346,6 +511,17 @@ if (!hasLock) {
     logPath = join(logsDirectory, 'desktop.log')
     logStream = createWriteStream(logPath, { flags: 'a' })
     writeLog('desktop', `DSH Desktop ${app.getVersion()} starting on ${process.platform}/${process.arch}.\n`)
+    const dshHome = resolveHarnessHome(process.env, app.getPath('home'), app.getPath('home'))
+    const installedPlugin = installDesktopPlugin({
+      sourceDir: join(import.meta.dirname, 'plugins', 'dsh-desktop-integration'),
+      dshHome,
+    })
+    writeLog('desktop', `Desktop integration plugin installed at ${installedPlugin}.\n`)
+    editors = detectEditors()
+    desktopSettingsPath = join(app.getPath('userData'), 'desktop-settings.json')
+    editorPreference = normalizeEditorPreference(readDesktopSettings(desktopSettingsPath).editor, editors)
+    writeLog('desktop', `Detected editors: ${editors.map(editor => editor.id).join(', ') || 'none'}.\n`)
+    installDesktopIpc()
     buildMenu()
     splashWindow = createSplashWindow()
     void startHarness()

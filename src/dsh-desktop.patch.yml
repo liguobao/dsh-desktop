@@ -1,0 +1,5 @@
+# Desktop-only overlay. The package is installed into DSH's documented
+# out-of-tree plugin fallback before the child process starts.
+- insert:
+    - id: dsh-desktop-integration
+      name: '@dsh-desktop/integration'
