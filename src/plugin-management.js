@@ -221,11 +221,19 @@ function findInstalledPlugin(catalog, previous, normalized) {
   if (normalized.source === 'npm') {
     return catalog.plugins.find(candidate => candidate.name === normalized.packageName)
   }
-  const repository = normalized.repository.toLowerCase()
-  const repositoryMatches = catalog.plugins.filter(candidate => candidate.requested.toLowerCase().includes(repository))
+  const repositoryMatches = catalog.plugins.filter(candidate => pluginUsesGitHubRepository(candidate, normalized.repository))
   if (repositoryMatches.length === 1) return repositoryMatches[0]
   const changed = catalog.plugins.filter(candidate => previous.get(candidate.name) !== candidate.requested)
   return changed.length === 1 ? changed[0] : undefined
+}
+
+function pluginUsesGitHubRepository(plugin, repository) {
+  try {
+    const source = normalizePluginSpec(plugin.requested)
+    return source.source === 'github' && source.repository.toLowerCase() === repository.toLowerCase()
+  } catch {
+    return false
+  }
 }
 
 function githubBuildKey(packageName, normalized) {
@@ -302,6 +310,7 @@ export async function installPlugin({
     throw new Error('Installed the GitHub repository but could not identify its package name')
   }
   if (normalized.source === 'github' && plugin !== undefined) {
+    const installedName = plugin.name
     const commit = resolvedGitHubCommit(profileDir, plugin.name)
     if (commit === undefined) throw new Error('Installed the GitHub repository but could not pin its resolved commit')
     const pinnedSpec = `github:${normalized.repository}#${commit}`
@@ -316,7 +325,31 @@ export async function installPlugin({
       signal,
     })
     catalog = readPluginCatalog({ dshHome, profile })
-    plugin = catalog.plugins.find(candidate => candidate.name === plugin.name)
+    plugin = catalog.plugins.find(candidate => candidate.name === installedName)
+    if (plugin === undefined) throw new Error('Pinned the GitHub repository but its package is no longer installed')
+    const superseded = catalog.plugins.filter(candidate =>
+      candidate.name !== installedName
+      && previous.has(candidate.name)
+      && pluginUsesGitHubRepository(candidate, normalized.repository),
+    )
+    if (superseded.length > 0) {
+      await runPnpmImpl({
+        args: ['remove', '--reporter', 'append-only', ...superseded.map(candidate => candidate.name)],
+        env,
+        execPath,
+        onOutput,
+        pnpmEntry,
+        profileDir,
+        signal,
+      })
+      for (const candidate of superseded) {
+        forgetGitHubBuildPermission(profileDir, candidate)
+        forgetPluginBundle({ dshHome, name: candidate.name, profile })
+      }
+      catalog = readPluginCatalog({ dshHome, profile })
+      plugin = catalog.plugins.find(candidate => candidate.name === installedName)
+      if (plugin === undefined) throw new Error('Removed the superseded plugin but the replacement is missing')
+    }
   }
   const requiredBuildScriptsIgnored = buildScriptsIgnored && plugin !== undefined
     && installedPluginRequiresBuild(profileDir, plugin.name)

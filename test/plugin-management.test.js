@@ -204,6 +204,54 @@ test('enables a prebuilt GitHub bundle when pnpm reports only a packlist build w
   assert.equal(catalog.plugins[0].enabled, true)
 })
 
+test('replaces an older package name from the same GitHub plugin repository', async (t) => {
+  const dshHome = temporaryDirectory(t)
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const profileManifest = join(profileDir, 'package.json')
+  const oldName = 'deepseek-harness-remote'
+  const newName = 'dsh-remote'
+  const commit = '1234567890abcdef1234567890abcdef12345678'
+  writeJson(profileManifest, {
+    name: 'dsh-profile-web',
+    private: true,
+    dependencies: { [oldName]: 'github:liguobao/deepseek-harness-remote#v0.2.1' },
+    dsh: { profile: { bundles: [oldName] } },
+  })
+  writeJson(join(profileDir, 'node_modules', oldName, 'package.json'), {
+    name: oldName, version: '0.2.1', dsh: { bundle: { patch: 'cordis.patch.yml' } },
+  })
+  const calls = []
+  const runPnpmImpl = async ({ args }) => {
+    calls.push(args)
+    const manifest = JSON.parse(readFileSync(profileManifest, 'utf8'))
+    if (args[0] === 'add') {
+      manifest.dependencies[newName] = args.at(-1)
+      writeJson(join(profileDir, 'node_modules', newName, 'package.json'), {
+        name: newName, version: '0.2.2', dsh: { bundle: { patch: 'cordis.patch.yml' } },
+      })
+      writeFileSync(join(profileDir, 'pnpm-lock.yaml'), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      ${newName}:\n        specifier: ${JSON.stringify(args.at(-1))}\n        version: https://codeload.github.com/liguobao/deepseek-harness-remote/tar.gz/${commit}\n`)
+    } else {
+      delete manifest.dependencies[oldName]
+    }
+    writeJson(profileManifest, manifest)
+    return { output: '' }
+  }
+
+  const catalog = await installPlugin({
+    dshHome,
+    pnpmEntry: '/pnpm.mjs',
+    spec: 'github:liguobao/deepseek-harness-remote#v0.2.2',
+    runPnpmImpl,
+  })
+
+  assert.equal(calls.length, 3)
+  assert.deepEqual(calls[2], ['remove', '--reporter', 'append-only', oldName])
+  assert.deepEqual(catalog.plugins.map(plugin => plugin.name), [newName])
+  assert.equal(catalog.plugins[0].enabled, true)
+  const manifest = JSON.parse(readFileSync(profileManifest, 'utf8'))
+  assert.deepEqual(manifest.dsh.profile.bundles, [newName])
+})
+
 test('removes only the build permission granted for an uninstalled GitHub plugin', async (t) => {
   const dshHome = temporaryDirectory(t)
   const profileDir = join(dshHome, 'profiles', 'web')
