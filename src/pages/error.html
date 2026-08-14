@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+    <title>DSH Desktop</title>
+    <style>
+      :root { color-scheme: light dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px; color: #172033; background: #f5f7fb; }
+      main { width: min(620px, 100%); padding: 38px; border: 1px solid #dfe5ef; border-radius: 24px; background: white; box-shadow: 0 20px 60px rgba(26, 52, 92, .1); }
+      img { width: 58px; height: 58px; }
+      h1 { margin: 22px 0 12px; font-size: 24px; letter-spacing: -.02em; }
+      p { color: #5c6980; line-height: 1.65; }
+      pre { max-height: 220px; overflow: auto; padding: 16px; border-radius: 12px; color: #7b2632; background: #fff2f3; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .hint { margin-bottom: 0; font-size: 13px; }
+      @media (prefers-color-scheme: dark) { body { color: #f2f6ff; background: #0c111b; } main { border-color: #273248; background: #151d2b; } p { color: #aebbd0; } pre { color: #ffb8c0; background: #311b22; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="../../assets/icon.svg" alt="">
+      <h1 id="title">DeepSeek Harness failed to start</h1>
+      <p id="summary">Use View → Restart Harness to try again.</p>
+      <pre id="detail"></pre>
+      <p class="hint" id="logs"></p>
+    </main>
+    <script>
+      const query = new URLSearchParams(location.search)
+      const zh = query.get('lang') === 'zh'
+      document.documentElement.lang = zh ? 'zh-CN' : 'en'
+      document.querySelector('#title').textContent = query.get('title') || (zh ? 'DeepSeek Harness 启动失败' : 'DeepSeek Harness failed to start')
+      document.querySelector('#summary').textContent = zh ? '请使用“视图 → 重启 Harness”重试。' : 'Use View → Restart Harness to try again.'
+      document.querySelector('#detail').textContent = query.get('detail') || (zh ? '未知错误' : 'Unknown error')
+      document.querySelector('#logs').textContent = `${zh ? '日志' : 'Logs'}: ${query.get('logs') || '-'}`
+    </script>
+  </body>
+</html>

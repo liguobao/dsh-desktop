@@ -1,0 +1,106 @@
+{
+  "name": "dsh-desktop",
+  "version": "0.1.0",
+  "description": "Community desktop wrapper for the DeepSeek Harness Web UI",
+  "type": "module",
+  "main": "src/main.js",
+  "author": {
+    "name": "DSH Desktop contributors",
+    "email": "liguobao@users.noreply.github.com"
+  },
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "postinstall": "electron-builder install-app-deps",
+    "start": "electron .",
+    "test": "node --test",
+    "check": "node --check src/main.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/parent-watch.cjs",
+    "dist": "electron-builder --publish never",
+    "dist:linux": "electron-builder --linux AppImage deb --publish never",
+    "dist:mac": "electron-builder --mac dmg zip --publish never",
+    "dist:windows": "electron-builder --win nsis portable --publish never"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis-plugin-group": "1.0.1",
+    "@deepseek-ai/dsh": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-anonymous-user-id": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-atomic-write": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-bash-local": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-code-runtime": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-compaction": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-fs": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-invariants": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-output-retention": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-sandbox": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-scope": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-session-telemetry": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-session-title-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-shell": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-spill": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-subagent-in-process-driver": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-subprocess": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-workflow": "0.1.0-rc.6"
+  },
+  "devDependencies": {
+    "electron": "43.4.0",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "io.github.dshdesktop.app",
+    "productName": "DSH Desktop",
+    "artifactName": "DSH-Desktop-${version}-${os}-${arch}.${ext}",
+    "asar": false,
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json",
+      "LICENSE",
+      "NOTICE.md"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.png",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "dmg": {
+      "sign": false
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "artifactName": "DSH-Desktop-${version}-windows-${arch}-setup.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "DSH-Desktop-${version}-windows-${arch}-portable.${ext}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Development",
+      "executableName": "dsh-desktop",
+      "maintainer": "DSH Desktop Contributors <liguobao@users.noreply.github.com>",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  }
+}
