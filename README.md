@@ -12,6 +12,7 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 - Uses a random free loopback port instead of assuming port `3080` is available.
 - Shows immediate, stage-based startup progress while the local Harness becomes ready.
 - Starts and stops the Harness server together with the desktop application.
+- Manages web-profile plugins from a dedicated desktop page, including installation, enable/disable, and removal.
 - Opens conversation files in VS Code, Cursor, VSCodium, or Zed, with workspace actions in the sidebar, session header, and native menu.
 - Keeps Electron's Node integration disabled and blocks untrusted in-app navigation.
 - Includes native installers and portable packages built by GitHub Actions.
@@ -57,6 +58,10 @@ See the upstream [Web UI guide](https://deepseek-harness.github.io/deepseek-harn
 
 Clicking a code or text file in a conversation opens it in the detected editor. HTML, images, PDFs, and directories continue to use their system-default application. Each workspace's sidebar **…** menu offers **Open in Editor** and **Open Folder**; the VS Code icon in the session header also opens the current workspace in the preferred editor. Select VS Code, Cursor, VSCodium, or Zed through the native **Workspace → Preferred Editor** menu. Files fall back to the system-default application when no supported editor is detected; an explicit editor action reports an error instead.
 
+Open **Plugins → Manage Plugins…** from the menu at the top of the window to manage the `web` profile on a dedicated page. Enter an npm registry package name such as `@scope/dsh-plugin` or `package@version`; installed DSH bundles can then be enabled, disabled, or uninstalled. System bundles are shown as read-only. Restart Harness from the page when prompted to apply changes. The package manager is bundled with the app, so release users do not need to install pnpm separately.
+
+Plugins execute local code with the same operating-system permissions as Harness. DSH Desktop accepts registry package names only and displays the package's installed manifest, but it cannot establish that a third-party package is safe—review the publisher and source before installing it.
+
 The **View → Restart Harness** command restarts the local service. Diagnostic output is available through **Help → Open Logs Folder**.
 
 ## How it works
@@ -65,10 +70,13 @@ The **View → Restart Harness** command restarts the local service. Diagnostic 
 DSH Desktop
 ├─ Electron main process
 │  ├─ restricted native path-opening bridge
+│  ├─ plugin profile service + bundled pnpm
 │  └─ bundled Electron runtime in Node mode
 │     └─ @deepseek-ai/dsh web --patch <desktop-adapter> --port 0
-└─ sandboxed Chromium window
-   └─ http://127.0.0.1:<assigned-port>
+├─ sandboxed Harness window
+│  └─ http://127.0.0.1:<assigned-port>
+└─ sandboxed local plugin-manager window
+   └─ $DSH_HOME/profiles/web/package.json
 ```
 
 Desktop capabilities come from the standalone dual-face `@dsh-desktop/integration` package in this repository. At startup, the app copies only that package into the upstream `$DSH_HOME/profiles/node_modules` extension-resolution directory and loads it with a one-off `--patch`. It does not modify the `@deepseek-ai/dsh` CLI source, installation, or the user's `cordis.patch.yml`.
@@ -118,7 +126,7 @@ The workflow intentionally does not contain signing identities. Maintainers can 
 
 DeepSeek Harness is an agent harness that can read and modify selected workspace files and execute commands with the permissions you grant. Review the active workspace, model provider, and permission prompts before starting a task.
 
-The HTTP server binds only to `127.0.0.1`. The desktop renderer has no Node.js access and cannot navigate to a different origin inside the same window. Its sole preload bridge accepts only two message classes from that exact Harness origin: publishing workspace scope and opening an existing path inside it. The main process resolves real paths, rejects paths and symlink escapes outside registered workspaces, and launches editors with argument arrays rather than a shell. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+The HTTP server binds only to `127.0.0.1`. Renderers have no Node.js access and cannot navigate outside their assigned origin or local page. The Harness preload accepts only workspace-scope and authorized path-opening messages from the exact Harness origin. The separate plugin-manager preload is accepted only from its exact local page and exposes fixed profile operations; package-manager commands use argument arrays rather than a shell. The main process rejects paths and symlink escapes outside registered workspaces. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## Project status and trademarks
 

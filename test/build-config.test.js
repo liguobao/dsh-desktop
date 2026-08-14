@@ -10,3 +10,7 @@ test('Windows build produces installer and portable packages', () => {
   assert.equal(packageJson.build.portable.artifactName, 'DSH-Desktop-v${version}-windows-${arch}-portable.${ext}')
   assert.notEqual(packageJson.build.nsis.artifactName, packageJson.build.portable.artifactName)
 })
+
+test('release builds bundle pnpm for profile plugin management', () => {
+  assert.match(packageJson.dependencies.pnpm, /^\d+\.\d+\.\d+$/)
+})

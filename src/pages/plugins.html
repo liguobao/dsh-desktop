@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+    <title>DSH Plugin Manager</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --bg: #f4f7fc;
+        --surface: #ffffff;
+        --surface-subtle: #f8faff;
+        --ink: #172033;
+        --muted: #526078;
+        --quiet: #68758b;
+        --border: #dce3ee;
+        --border-strong: #c7d1e0;
+        --accent: #315cf4;
+        --accent-hover: #244bd1;
+        --accent-soft: #edf1ff;
+        --danger: #b42335;
+        --danger-soft: #fff0f1;
+        --success: #157347;
+        --warning-bg: #fff7df;
+        --warning-border: #e7cc7a;
+        --warning-ink: #594613;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; color: var(--ink); background: var(--bg); font-size: 14px; }
+      button, input { font: inherit; }
+      button { color: inherit; }
+      .topbar { height: 64px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 0 28px; }
+      .brand { min-width: 0; display: flex; align-items: center; gap: 11px; }
+      .brand img { width: 34px; height: 34px; border-radius: 8px; }
+      .brand h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+      .brand p { margin: 1px 0 0; color: var(--quiet); font-size: 12px; }
+      .top-actions { flex: none; display: flex; align-items: center; gap: 2px; }
+      .text-button { min-height: 32px; border: 0; border-radius: 8px; padding: 0 10px; color: var(--muted); background: transparent; cursor: pointer; }
+      .text-button:hover { color: var(--ink); background: var(--surface-subtle); }
+      .text-button:focus-visible, .button:focus-visible, .switch:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      main { width: min(900px, calc(100% - 48px)); margin: 0 auto; padding: 34px 0 48px; }
+      .intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 32px; }
+      .intro-copy { max-width: 60ch; }
+      h2 { margin: 0; font-size: 23px; line-height: 1.3; letter-spacing: -.02em; text-wrap: balance; }
+      .intro-copy p { margin: 8px 0 0; color: var(--muted); line-height: 1.55; text-wrap: pretty; }
+      .summary { flex: none; padding-top: 4px; color: var(--quiet); font-size: 13px; font-variant-numeric: tabular-nums; }
+      .notice { margin-top: 24px; border: 1px solid var(--warning-border); border-radius: 10px; padding: 12px 14px; color: var(--warning-ink); background: var(--warning-bg); line-height: 1.5; }
+      .install { margin-top: 26px; }
+      .install label { display: block; margin-bottom: 8px; color: var(--ink); font-weight: 600; }
+      .install-row { display: flex; gap: 10px; }
+      .install input { width: 100%; min-width: 0; height: 40px; border: 1px solid var(--border-strong); border-radius: 9px; padding: 0 12px; color: var(--ink); background: var(--surface); }
+      .install input::placeholder { color: #69768c; opacity: 1; }
+      .install input:hover { border-color: #9ba9bc; }
+      .install input:focus { border-color: var(--accent); outline-offset: 0; }
+      .install-hint { margin: 7px 0 0; color: var(--quiet); font-size: 12px; line-height: 1.45; }
+      .button { min-height: 36px; border: 0; border-radius: 9px; padding: 0 14px; background: var(--surface-subtle); cursor: pointer; font-weight: 580; white-space: nowrap; }
+      .button:hover:not(:disabled) { background: #e9eef7; }
+      .button:active:not(:disabled) { transform: translateY(1px); }
+      .button--primary { min-width: 92px; height: 40px; color: white; background: var(--accent); }
+      .button--primary:hover:not(:disabled) { background: var(--accent-hover); }
+      .button--danger { color: var(--danger); background: transparent; }
+      .button--danger:hover:not(:disabled) { background: var(--danger-soft); }
+      .button:disabled, .text-button:disabled, .switch:disabled, input:disabled { cursor: not-allowed; opacity: .55; }
+      .feedback { display: none; margin-top: 18px; border-radius: 9px; padding: 11px 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .feedback[data-visible="true"] { display: block; }
+      .feedback[data-kind="error"] { color: #84202f; background: var(--danger-soft); }
+      .feedback[data-kind="info"] { color: #24418c; background: var(--accent-soft); }
+      .restart { display: none; margin-top: 18px; border: 1px solid #bbc8f8; border-radius: 10px; padding: 12px 14px; background: var(--accent-soft); align-items: center; justify-content: space-between; gap: 18px; }
+      .restart[data-visible="true"] { display: flex; }
+      .restart p { margin: 0; color: #263b79; line-height: 1.45; }
+      .section { margin-top: 34px; }
+      .section-head { min-height: 28px; display: flex; align-items: baseline; justify-content: space-between; gap: 18px; margin-bottom: 8px; }
+      .section h3 { margin: 0; font-size: 15px; font-weight: 650; }
+      .section-note { max-width: 58%; margin: 0; color: var(--quiet); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+      .plugin-list { margin: 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); }
+      .plugin-row { min-height: 74px; display: flex; align-items: center; gap: 20px; padding: 14px 16px; }
+      .plugin-row + .plugin-row { border-top: 1px solid var(--border); }
+      .plugin-main { min-width: 0; flex: 1; }
+      .plugin-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px; }
+      .plugin-name { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+      .plugin-version { color: var(--quiet); font-size: 12px; }
+      .plugin-description { max-width: 68ch; margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; text-wrap: pretty; }
+      .plugin-meta { margin-top: 5px; color: var(--quiet); font-size: 11px; }
+      .plugin-actions { flex: none; display: flex; align-items: center; gap: 6px; }
+      .status { border-radius: 999px; padding: 3px 8px; color: var(--success); background: #e9f7ef; font-size: 11px; font-weight: 600; }
+      .status--off { color: #5f6b7c; background: #edf0f5; }
+      .status--warning { color: #7a5811; background: #fff3cf; }
+      .switch { width: 38px; height: 22px; border: 0; border-radius: 999px; padding: 3px; background: #abb5c4; cursor: pointer; transition: background-color 160ms cubic-bezier(.22, 1, .36, 1); }
+      .switch::after { content: ""; width: 16px; height: 16px; border-radius: 50%; background: white; display: block; transform: translateX(0); transition: transform 160ms cubic-bezier(.22, 1, .36, 1); }
+      .switch[aria-checked="true"] { background: var(--accent); }
+      .switch[aria-checked="true"]::after { transform: translateX(16px); }
+      .empty { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 30px 16px; text-align: center; color: var(--muted); background: var(--surface); line-height: 1.55; }
+      .skeleton { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); }
+      .skeleton-row { height: 74px; padding: 18px 16px; }
+      .skeleton-row + .skeleton-row { border-top: 1px solid var(--border); }
+      .skeleton-line { height: 11px; width: 34%; border-radius: 4px; background: #e5eaf2; }
+      .skeleton-line + .skeleton-line { width: 62%; margin-top: 10px; }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0d131e; --surface: #151d2a; --surface-subtle: #1c2635; --ink: #eef3fb;
+          --muted: #b3bfd1; --quiet: #9aa8bc; --border: #2a3546; --border-strong: #3a485d;
+          --accent: #6e8cff; --accent-hover: #87a0ff; --accent-soft: #1b2851; --danger: #ff9ba8;
+          --danger-soft: #391e25; --success: #75d5a4; --warning-bg: #302a18; --warning-border: #6f5f2b; --warning-ink: #f0d98d;
+        }
+        .install input::placeholder { color: #9aa8bc; }
+        .install input:hover { border-color: #64738a; }
+        .button:hover:not(:disabled) { background: #263245; }
+        .button--primary { color: #0b142b; background: var(--accent); }
+        .button--primary:hover:not(:disabled) { background: var(--accent-hover); }
+        .feedback[data-kind="error"] { color: #ffc0c8; }
+        .feedback[data-kind="info"], .restart p { color: #c4d0ff; }
+        .restart { border-color: #3d508f; }
+        .status { background: #183529; }
+        .status--off { color: #b4becc; background: #283241; }
+        .status--warning { color: #efd486; background: #3a3118; }
+        .skeleton-line { background: #293547; }
+      }
+      @media (max-width: 720px) {
+        .topbar { padding: 0 18px; }
+        main { width: min(100% - 32px, 900px); padding-top: 26px; }
+        .intro { display: block; }
+        .summary { margin-top: 10px; }
+        .plugin-row { align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+        .plugin-actions { width: 100%; justify-content: flex-end; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .switch, .switch::after { transition: none; }
+        .button:active:not(:disabled) { transform: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="../../assets/icon.png" alt="">
+        <div>
+          <h1 id="app-title">Plugin Manager</h1>
+          <p>DSH Desktop · web profile</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="text-button" id="refresh" type="button">Refresh</button>
+        <button class="text-button" id="docs" type="button">Plugin documentation</button>
+      </div>
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div class="intro-copy">
+          <h2 id="page-title">Manage Harness plugins</h2>
+          <p id="intro-text">Install npm packages that declare a DSH bundle, choose which ones load, and remove plugins you no longer use.</p>
+        </div>
+        <div class="summary" id="summary" aria-live="polite">Loading…</div>
+      </section>
+
+      <div class="notice" id="trust-notice">Plugins run locally with the same permissions as Harness. Install only packages you trust.</div>
+
+      <form class="install" id="install-form">
+        <label for="plugin-spec" id="install-label">Install from npm</label>
+        <div class="install-row">
+          <input id="plugin-spec" name="plugin" type="text" maxlength="214" autocomplete="off" spellcheck="false" placeholder="@scope/dsh-plugin or package@version" required>
+          <button class="button button--primary" id="install-button" type="submit">Install</button>
+        </div>
+        <p class="install-hint" id="install-hint">Registry package names and optional versions are supported. Changes require a Harness restart.</p>
+      </form>
+
+      <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+      <div class="restart" id="restart-banner">
+        <p id="restart-text">Plugin settings changed. Restart Harness to apply them.</p>
+        <button class="button button--primary" id="restart" type="button">Restart now</button>
+      </div>
+
+      <section class="section" aria-labelledby="installed-heading">
+        <div class="section-head">
+          <h3 id="installed-heading">Installed plugins</h3>
+          <p class="section-note" id="installed-note">Managed in ~/.dsh/profiles/web</p>
+        </div>
+        <div class="skeleton" id="loading-list" aria-label="Loading plugins">
+          <div class="skeleton-row"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+          <div class="skeleton-row"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+        </div>
+        <div class="plugin-list" id="plugin-list" hidden></div>
+        <div class="empty" id="empty" hidden>No user plugins are installed. Enter an npm package above to add one.</div>
+      </section>
+
+      <section class="section" aria-labelledby="system-heading">
+        <div class="section-head">
+          <h3 id="system-heading">System bundles</h3>
+          <p class="section-note" id="system-note">Required by the web profile</p>
+        </div>
+        <div class="plugin-list" id="system-list"></div>
+      </section>
+    </main>
+    <script>
+      const query = new URLSearchParams(location.search)
+      const zh = query.get('lang') === 'zh'
+      const api = window.dshPluginManager
+      const strings = zh ? {
+        title: '插件管理', pageTitle: '管理 Harness 插件',
+        intro: '安装声明了 DSH bundle 的 npm 包，控制它们是否加载，并移除不再使用的插件。',
+        docs: '插件文档', refresh: '刷新', trust: '插件会在本机以 Harness 的相同权限运行，请只安装你信任的软件包。',
+        installLabel: '从 npm 安装', placeholder: '@scope/dsh-plugin 或 package@version', install: '安装', installing: '安装中…',
+        installHint: '支持 npm Registry 包名和可选版本；修改后需要重启 Harness。',
+        installed: '已安装插件', managed: '管理目录', empty: '尚未安装用户插件，请在上方输入 npm 包名进行安装。',
+        system: '系统 Bundle', systemNote: 'web profile 运行所必需', loading: '正在加载…', count: count => `${count} 个用户插件`,
+        enabled: '已启用', disabled: '已停用', invalid: '不是 DSH 插件', missing: '文件缺失', bundled: '随 Harness 提供',
+        enable: '启用', disable: '停用', remove: '卸载', removing: '卸载中…',
+        confirmRemove: name => `确定要卸载 ${name} 吗？`,
+        restartText: '插件设置已更改，需要重启 Harness 后生效。', restart: '立即重启', restarting: '正在重启…',
+        installedMessage: '插件安装完成。', removedMessage: '插件已卸载。', changedMessage: '插件状态已更新。',
+        unavailable: '插件管理桥接不可用，请重新启动 DSH Desktop。', unknownError: '插件操作失败。',
+      } : {
+        title: 'Plugin Manager', pageTitle: 'Manage Harness plugins',
+        intro: 'Install npm packages that declare a DSH bundle, choose which ones load, and remove plugins you no longer use.',
+        docs: 'Plugin documentation', refresh: 'Refresh', trust: 'Plugins run locally with the same permissions as Harness. Install only packages you trust.',
+        installLabel: 'Install from npm', placeholder: '@scope/dsh-plugin or package@version', install: 'Install', installing: 'Installing…',
+        installHint: 'Registry package names and optional versions are supported. Changes require a Harness restart.',
+        installed: 'Installed plugins', managed: 'Managed in', empty: 'No user plugins are installed. Enter an npm package above to add one.',
+        system: 'System bundles', systemNote: 'Required by the web profile', loading: 'Loading…', count: count => `${count} user plugin${count === 1 ? '' : 's'}`,
+        enabled: 'Enabled', disabled: 'Disabled', invalid: 'Not a DSH plugin', missing: 'Files missing', bundled: 'Bundled with Harness',
+        enable: 'Enable', disable: 'Disable', remove: 'Uninstall', removing: 'Uninstalling…',
+        confirmRemove: name => `Uninstall ${name}?`,
+        restartText: 'Plugin settings changed. Restart Harness to apply them.', restart: 'Restart now', restarting: 'Restarting…',
+        installedMessage: 'Plugin installed.', removedMessage: 'Plugin uninstalled.', changedMessage: 'Plugin status updated.',
+        unavailable: 'The plugin manager bridge is unavailable. Restart DSH Desktop.', unknownError: 'Plugin operation failed.',
+      }
+
+      const elements = {
+        summary: document.querySelector('#summary'), spec: document.querySelector('#plugin-spec'),
+        form: document.querySelector('#install-form'), install: document.querySelector('#install-button'),
+        feedback: document.querySelector('#feedback'), restartBanner: document.querySelector('#restart-banner'),
+        restart: document.querySelector('#restart'), loading: document.querySelector('#loading-list'),
+        list: document.querySelector('#plugin-list'), empty: document.querySelector('#empty'), system: document.querySelector('#system-list'),
+      }
+      let busy = false
+      let restartRequired = false
+      let catalog = { plugins: [], system: [] }
+
+      function localize() {
+        document.documentElement.lang = zh ? 'zh-CN' : 'en'
+        document.querySelector('#app-title').textContent = strings.title
+        document.querySelector('#page-title').textContent = strings.pageTitle
+        document.querySelector('#intro-text').textContent = strings.intro
+        document.querySelector('#docs').textContent = strings.docs
+        document.querySelector('#refresh').textContent = strings.refresh
+        document.querySelector('#trust-notice').textContent = strings.trust
+        document.querySelector('#install-label').textContent = strings.installLabel
+        elements.spec.placeholder = strings.placeholder
+        elements.install.textContent = strings.install
+        document.querySelector('#install-hint').textContent = strings.installHint
+        document.querySelector('#installed-heading').textContent = strings.installed
+        document.querySelector('#installed-note').textContent = strings.managed
+        elements.empty.textContent = strings.empty
+        document.querySelector('#system-heading').textContent = strings.system
+        document.querySelector('#system-note').textContent = strings.systemNote
+        document.querySelector('#restart-text').textContent = strings.restartText
+        elements.restart.textContent = strings.restart
+        elements.summary.textContent = strings.loading
+      }
+
+      function setFeedback(message = '', kind = 'info') {
+        elements.feedback.textContent = message
+        elements.feedback.dataset.kind = kind
+        elements.feedback.dataset.visible = String(message !== '')
+      }
+
+      function errorText(result) {
+        const message = typeof result?.error === 'string' && result.error.trim() !== '' ? result.error.trim() : strings.unknownError
+        return message.length > 1800 ? `…${message.slice(-1800)}` : message
+      }
+
+      function setBusy(value, action = '') {
+        busy = value
+        for (const control of document.querySelectorAll('button, input')) control.disabled = value
+        elements.install.textContent = value && action === 'install' ? strings.installing : strings.install
+      }
+
+      function textElement(tag, className, text) {
+        const element = document.createElement(tag)
+        element.className = className
+        element.textContent = text
+        return element
+      }
+
+      function pluginRow(plugin, system = false) {
+        const row = document.createElement('div')
+        row.className = 'plugin-row'
+        const main = document.createElement('div')
+        main.className = 'plugin-main'
+        const title = document.createElement('div')
+        title.className = 'plugin-title'
+        title.append(textElement('span', 'plugin-name', plugin.name))
+        if (plugin.version) title.append(textElement('span', 'plugin-version', `v${plugin.version}`))
+        main.append(title)
+        if (plugin.description) main.append(textElement('p', 'plugin-description', plugin.description))
+        main.append(textElement('div', 'plugin-meta', system ? strings.bundled : plugin.requested || 'npm'))
+
+        const actions = document.createElement('div')
+        actions.className = 'plugin-actions'
+        if (system) {
+          actions.append(textElement('span', 'status', strings.enabled))
+        } else if (!plugin.installed) {
+          actions.append(textElement('span', 'status status--warning', strings.missing))
+        } else if (!plugin.bundle) {
+          actions.append(textElement('span', 'status status--warning', strings.invalid))
+        } else {
+          actions.append(textElement('span', `status${plugin.enabled ? '' : ' status--off'}`, plugin.enabled ? strings.enabled : strings.disabled))
+          const toggle = document.createElement('button')
+          toggle.type = 'button'
+          toggle.className = 'switch'
+          toggle.setAttribute('role', 'switch')
+          toggle.setAttribute('aria-checked', String(plugin.enabled))
+          toggle.setAttribute('aria-label', `${plugin.enabled ? strings.disable : strings.enable} ${plugin.name}`)
+          toggle.addEventListener('click', () => void changeEnabled(plugin.name, !plugin.enabled))
+          actions.append(toggle)
+        }
+        if (!system) {
+          const remove = document.createElement('button')
+          remove.type = 'button'
+          remove.className = 'button button--danger'
+          remove.textContent = strings.remove
+          remove.addEventListener('click', () => void uninstall(plugin.name))
+          actions.append(remove)
+        }
+        row.append(main, actions)
+        return row
+      }
+
+      function render() {
+        elements.loading.hidden = true
+        elements.summary.textContent = strings.count(catalog.plugins.length)
+        document.querySelector('#installed-note').textContent = `${strings.managed}: ${catalog.profileDir ?? '~/.dsh/profiles/web'}`
+        elements.list.replaceChildren(...catalog.plugins.map(plugin => pluginRow(plugin)))
+        elements.list.hidden = catalog.plugins.length === 0
+        elements.empty.hidden = catalog.plugins.length !== 0
+        elements.system.replaceChildren(...catalog.system.map(plugin => pluginRow(plugin, true)))
+        elements.restartBanner.dataset.visible = String(restartRequired)
+      }
+
+      async function load() {
+        if (!api) {
+          elements.loading.hidden = true
+          setFeedback(strings.unavailable, 'error')
+          return
+        }
+        const result = await api.list()
+        if (!result?.ok) {
+          elements.loading.hidden = true
+          setFeedback(errorText(result), 'error')
+          return
+        }
+        catalog = result.catalog
+        render()
+      }
+
+      async function install(event) {
+        event.preventDefault()
+        if (busy) return
+        setFeedback()
+        setBusy(true, 'install')
+        const result = await api.install(elements.spec.value)
+        setBusy(false)
+        if (!result?.ok) {
+          setFeedback(errorText(result), 'error')
+          return
+        }
+        catalog = result.catalog
+        restartRequired = true
+        elements.spec.value = ''
+        setFeedback(strings.installedMessage)
+        render()
+      }
+
+      async function changeEnabled(name, enabled) {
+        if (busy) return
+        setFeedback()
+        setBusy(true)
+        const result = await api.setEnabled(name, enabled)
+        setBusy(false)
+        if (!result?.ok) {
+          setFeedback(errorText(result), 'error')
+          return
+        }
+        catalog = result.catalog
+        restartRequired = true
+        setFeedback(strings.changedMessage)
+        render()
+      }
+
+      async function uninstall(name) {
+        if (busy || !confirm(strings.confirmRemove(name))) return
+        setFeedback()
+        setBusy(true)
+        const result = await api.remove(name)
+        setBusy(false)
+        if (!result?.ok) {
+          setFeedback(errorText(result), 'error')
+          return
+        }
+        catalog = result.catalog
+        restartRequired = true
+        setFeedback(strings.removedMessage)
+        render()
+      }
+
+      async function restart() {
+        if (busy) return
+        setBusy(true)
+        elements.restart.textContent = strings.restarting
+        const result = await api.restart()
+        if (!result?.ok) {
+          setBusy(false)
+          elements.restart.textContent = strings.restart
+          setFeedback(errorText(result), 'error')
+          return
+        }
+        window.close()
+      }
+
+      localize()
+      elements.form.addEventListener('submit', install)
+      elements.restart.addEventListener('click', restart)
+      document.querySelector('#refresh').addEventListener('click', () => void load())
+      document.querySelector('#docs').addEventListener('click', () => void api?.openDocs())
+      void load()
+    </script>
+  </body>
+</html>

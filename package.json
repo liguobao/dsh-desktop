@@ -17,7 +17,7 @@
     "postinstall": "patch-package",
     "start": "electron .",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/desktop-integration.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/startup-progress.js && node --check src/parent-watch.cjs && node --check src/preload.cjs && node --check src/plugins/dsh-desktop-integration/lib/index.js && node --check src/plugins/dsh-desktop-integration/lib/client.js",
+    "check": "node --check src/main.js && node --check src/desktop-integration.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/plugin-management.js && node --check src/startup-progress.js && node --check src/parent-watch.cjs && node --check src/preload.cjs && node --check src/plugin-preload.cjs && node --check src/plugins/dsh-desktop-integration/lib/index.js && node --check src/plugins/dsh-desktop-integration/lib/client.js",
     "dist": "electron-builder --publish never",
     "dist:linux": "electron-builder --linux AppImage --publish never",
     "dist:mac": "electron-builder --mac dmg --publish never",
@@ -43,7 +43,8 @@
     "@deepseek-ai/dsh-subagent-in-process-driver": "0.1.0-rc.6",
     "@deepseek-ai/dsh-subprocess": "0.1.0-rc.6",
     "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-workflow": "0.1.0-rc.6"
+    "@deepseek-ai/dsh-workflow": "0.1.0-rc.6",
+    "pnpm": "11.21.0"
   },
   "devDependencies": {
     "electron": "43.4.0",

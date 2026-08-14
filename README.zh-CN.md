@@ -12,6 +12,7 @@
 - 自动使用一个空闲的本地回环端口，不会假设 `3080` 一定可用。
 - 启动后立即显示基于真实阶段的进度，直到本地 Harness 完成加载。
 - 桌面应用与 Harness 服务同时启动、同时退出。
+- 提供独立的 web profile 插件管理页，支持安装、启用/停用和卸载。
 - 对话中的文件入口可直接调用 VS Code、Cursor、VSCodium 或 Zed；工作区可从侧栏菜单、会话标题栏或原生菜单交给编辑器和文件管理器打开。
 - 默认关闭 Electron Node 注入，并阻止不可信页面在应用内导航。
 - 使用 GitHub Actions 构建原生安装包和免安装版本。
@@ -57,6 +58,10 @@ Harness 的具体使用方式可参考上游 [Web UI 指南](https://deepseek-ha
 
 对话里点击代码或文本文件时，桌面适配插件会使用检测到的编辑器打开；HTML、图片、PDF 和目录仍交给系统默认程序。侧栏中每个工作区的 **…** 菜单提供**用编辑器打开**和**打开文件夹**，会话标题栏的 VS Code 图标也会在首选编辑器中打开当前工作区。还可以通过原生菜单的**工作区 → 首选编辑器**选择 VS Code、Cursor、VSCodium 或 Zed。未检测到支持的编辑器时，文件会回退到系统默认程序；显式使用编辑器打开时会显示错误提示。
 
+通过窗口最上方的**插件 → 插件管理…**打开独立管理页。输入 npm Registry 包名，例如 `@scope/dsh-plugin` 或 `package@version`，即可安装插件；已经安装且声明了 DSH bundle 的插件可以启用、停用或卸载，系统 Bundle 只读展示。修改后按照页面提示重启 Harness 即可生效。包管理器已经内置到应用中，Release 用户无需另外安装 pnpm。
+
+插件会在本机以 Harness 相同的操作系统权限执行代码。DSH Desktop 只接受 Registry 包名并展示安装后的包清单，但无法替第三方软件包提供安全背书；安装前请检查发布者和源码。
+
 可以通过**视图 → 重启 Harness**重启本地服务，通过**帮助 → 打开日志目录**查看诊断日志。
 
 ## 工作原理
@@ -65,10 +70,13 @@ Harness 的具体使用方式可参考上游 [Web UI 指南](https://deepseek-ha
 DSH Desktop
 ├─ Electron 主进程
 │  ├─ 受限的本地路径打开桥接
+│  ├─ 插件 Profile 服务与内置 pnpm
 │  └─ 以 Node 模式运行的内置 Electron
 │     └─ @deepseek-ai/dsh web --patch <桌面适配层> --port 0
-└─ 沙箱化 Chromium 窗口
-   └─ http://127.0.0.1:<自动分配端口>
+├─ 沙箱化 Harness 窗口
+│  └─ http://127.0.0.1:<自动分配端口>
+└─ 沙箱化本地插件管理窗口
+   └─ $DSH_HOME/profiles/web/package.json
 ```
 
 桌面能力由本仓库内的独立双端插件 `@dsh-desktop/integration` 提供。启动时应用只把该插件复制到 `$DSH_HOME/profiles/node_modules` 的上游扩展解析目录，再用一次性 `--patch` 加载；不会修改 `@deepseek-ai/dsh` 的 CLI 源码、安装包或用户的 `cordis.patch.yml`。
@@ -118,7 +126,7 @@ git push origin HEAD --follow-tags
 
 DeepSeek Harness 是可以读取和修改所选工作区文件、并按授权执行命令的 Agent Harness。开始任务前，请检查当前工作区、模型提供方和权限提示。
 
-本地 HTTP 服务只绑定 `127.0.0.1`。桌面渲染进程无法访问 Node.js，也不能在同一个窗口中跳转到其他 Origin。唯一的 preload 桥接只接受该 Harness Origin 发来的两类消息：发布工作区范围，以及打开其中已存在的路径。主进程会解析真实路径并拒绝工作区外路径和符号链接逃逸；启动编辑器时只使用参数数组，不经过 Shell。漏洞报告方式见 [SECURITY.md](SECURITY.md)。
+本地 HTTP 服务只绑定 `127.0.0.1`。所有渲染进程都无法访问 Node.js，也不能离开各自限定的 Origin 或本地页面。Harness preload 只接受来自精确 Harness Origin 的工作区范围和授权路径打开消息；独立的插件管理 preload 只接受其精确本地页面发来的固定 Profile 操作，包管理命令只使用参数数组且不经过 Shell。主进程仍会拒绝工作区外路径和符号链接逃逸。漏洞报告方式见 [SECURITY.md](SECURITY.md)。
 
 ## 项目状态与商标
 

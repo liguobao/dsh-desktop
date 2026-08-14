@@ -19,6 +19,12 @@ import {
 } from './desktop-integration.js'
 import { HarnessServer } from './harness-server.js'
 import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
+import {
+  installPlugin as installProfilePlugin,
+  readPluginCatalog,
+  removePlugin as removeProfilePlugin,
+  setPluginEnabled,
+} from './plugin-management.js'
 import { loadingStateScript, normalizeProgress } from './startup-progress.js'
 
 const require = createRequire(import.meta.url)
@@ -51,6 +57,9 @@ function setLocale(locale) {
       automaticEditor: '自动选择',
       noEditor: '未检测到受支持的编辑器',
       nativeOpenFailed: '无法打开本地路径',
+      plugins: '插件',
+      managePlugins: '插件管理…',
+      pluginManager: 'DSH 插件管理',
     } : {
       preparing: 'Preparing the desktop window…',
       loading: 'Starting DeepSeek Harness…',
@@ -75,6 +84,9 @@ function setLocale(locale) {
       automaticEditor: 'Automatic',
       noEditor: 'No supported editor detected',
       nativeOpenFailed: 'Could Not Open Local Path',
+      plugins: 'Plugins',
+      managePlugins: 'Manage Plugins…',
+      pluginManager: 'DSH Plugin Manager',
     }
 }
 
@@ -82,6 +94,7 @@ setLocale('en')
 
 let mainWindow
 let splashWindow
+let pluginWindow
 let server
 let harnessOrigin
 let quitting = false
@@ -95,6 +108,9 @@ let editors = []
 let editorPreference = 'auto'
 let desktopSettingsPath
 let desktopIpcInstalled = false
+let dshHome
+let pluginOperationRunning = false
+let pluginOperationController
 
 function writeLog(source, text) {
   const prefix = `[${new Date().toISOString()}] [${source}] `
@@ -111,6 +127,15 @@ function senderIsHarness(event) {
   if (event.sender !== mainWindow.webContents) return false
   try {
     return new URL(event.senderFrame?.url ?? event.sender.getURL()).origin === harnessOrigin
+  } catch {
+    return false
+  }
+}
+
+function senderIsPluginManager(event) {
+  if (pluginWindow?.isDestroyed() !== false || event.sender !== pluginWindow.webContents) return false
+  try {
+    return fileURLToPath(event.senderFrame?.url ?? event.sender.getURL()) === pagePath('plugins.html')
   } catch {
     return false
   }
@@ -181,6 +206,72 @@ function installDesktopIpc() {
     workspaceRoots = next.roots
     if (activeChanged) buildMenu()
   })
+  ipcMain.handle('dsh-desktop:plugins-list', (event) => {
+    if (!senderIsPluginManager(event) || dshHome === undefined) return { ok: false, error: 'Untrusted plugin request' }
+    try {
+      return { ok: true, catalog: readPluginCatalog({ dshHome }) }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('dsh-desktop:plugins-install', (event, spec) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }
+    return runPluginOperation(signal => installProfilePlugin({
+      dshHome,
+      pnpmEntry: resolvePnpmEntry(),
+      spec,
+      onOutput: writeLog,
+      signal,
+    }))
+  })
+  ipcMain.handle('dsh-desktop:plugins-enabled', (event, name, enabled) => {
+    if (!senderIsPluginManager(event) || typeof enabled !== 'boolean') {
+      return { ok: false, error: 'Untrusted plugin request' }
+    }
+    return runPluginOperation(async () => {
+      setPluginEnabled({ dshHome, name, enabled })
+      return readPluginCatalog({ dshHome })
+    })
+  })
+  ipcMain.handle('dsh-desktop:plugins-remove', (event, name) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }
+    return runPluginOperation(signal => removeProfilePlugin({
+      dshHome,
+      pnpmEntry: resolvePnpmEntry(),
+      name,
+      onOutput: writeLog,
+      signal,
+    }))
+  })
+  ipcMain.handle('dsh-desktop:plugins-restart', (event) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }
+    void startHarness(copy.restarting)
+    return { ok: true }
+  })
+  ipcMain.handle('dsh-desktop:plugins-docs', (event) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }
+    void shell.openExternal('https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/README.md#profiles')
+    return { ok: true }
+  })
+}
+
+async function runPluginOperation(action) {
+  if (dshHome === undefined) return { ok: false, error: 'Harness home is unavailable' }
+  if (pluginOperationRunning) return { ok: false, error: 'Another plugin operation is already running' }
+  pluginOperationRunning = true
+  const controller = new AbortController()
+  pluginOperationController = controller
+  try {
+    const catalog = await action(controller.signal)
+    return { ok: true, catalog }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    writeLog('stderr', `Plugin operation failed: ${detail}\n`)
+    return { ok: false, error: detail }
+  } finally {
+    if (pluginOperationController === controller) pluginOperationController = undefined
+    pluginOperationRunning = false
+  }
 }
 
 function clearWorkspaceContext() {
@@ -194,6 +285,13 @@ function resolveDshEntry() {
   const manifest = require.resolve('@deepseek-ai/dsh/package.json')
   const entry = join(dirname(manifest), 'lib', 'bin.js')
   if (!existsSync(entry)) throw new Error(`DeepSeek Harness entry point is missing: ${entry}`)
+  return entry
+}
+
+function resolvePnpmEntry() {
+  const manifest = require.resolve('pnpm')
+  const entry = join(dirname(manifest), 'bin', 'pnpm.mjs')
+  if (!existsSync(entry)) throw new Error(`Bundled pnpm entry point is missing: ${entry}`)
   return entry
 }
 
@@ -314,8 +412,60 @@ function createWindow() {
     },
   })
   installNavigationPolicy(window)
-  window.on('closed', () => { mainWindow = undefined })
+  window.on('closed', () => {
+    mainWindow = undefined
+    if (pluginWindow?.isDestroyed() === false) pluginWindow.close()
+  })
   return window
+}
+
+function createPluginWindow() {
+  const window = new BrowserWindow({
+    width: 960,
+    height: 720,
+    minWidth: 760,
+    minHeight: 560,
+    show: false,
+    autoHideMenuBar: true,
+    title: copy.pluginManager,
+    icon: join(import.meta.dirname, '..', 'assets', 'icon.png'),
+    backgroundColor: '#f4f7fc',
+    webPreferences: {
+      preload: join(import.meta.dirname, 'plugin-preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+    },
+  })
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  window.webContents.on('will-navigate', (event, url) => {
+    try {
+      if (fileURLToPath(url) === pagePath('plugins.html')) return
+    } catch {
+      // Reject non-file and malformed navigation below.
+    }
+    event.preventDefault()
+  })
+  window.once('ready-to-show', () => window.show())
+  window.on('closed', () => {
+    if (pluginWindow === window) pluginWindow = undefined
+  })
+  return window
+}
+
+function showPluginManager() {
+  if (pluginWindow?.isDestroyed() === false) {
+    if (pluginWindow.isMinimized()) pluginWindow.restore()
+    pluginWindow.show()
+    pluginWindow.focus()
+    return
+  }
+  pluginWindow = createPluginWindow()
+  void pluginWindow.loadFile(pagePath('plugins.html'), {
+    query: { lang: isChinese ? 'zh' : 'en' },
+  })
 }
 
 function createSplashWindow() {
@@ -462,6 +612,12 @@ function buildMenu() {
       ],
     },
     {
+      label: copy.plugins,
+      submenu: [
+        { label: copy.managePlugins, click: showPluginManager },
+      ],
+    },
+    {
       label: copy.view,
       submenu: [
         { label: copy.reload, accelerator: 'CmdOrCtrl+R', click: () => mainWindow?.reload() },
@@ -512,7 +668,7 @@ if (!hasLock) {
     logPath = join(logsDirectory, 'desktop.log')
     logStream = createWriteStream(logPath, { flags: 'a' })
     writeLog('desktop', `DSH Desktop ${app.getVersion()} starting on ${process.platform}/${process.arch}.\n`)
-    const dshHome = resolveHarnessHome(process.env, app.getPath('home'), app.getPath('home'))
+    dshHome = resolveHarnessHome(process.env, app.getPath('home'), app.getPath('home'))
     const installedPlugin = installDesktopPlugin({
       sourceDir: join(import.meta.dirname, 'plugins', 'dsh-desktop-integration'),
       dshHome,
@@ -543,6 +699,7 @@ if (!hasLock) {
     event.preventDefault()
     quitting = true
     restartGeneration += 1
+    pluginOperationController?.abort()
     void Promise.resolve(server?.stop()).finally(() => {
       logStream?.end()
       app.quit()
