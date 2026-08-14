@@ -25,6 +25,14 @@ import {
   removePlugin as removeProfilePlugin,
   setPluginEnabled,
 } from './plugin-management.js'
+import {
+  createSkill,
+  importSkill,
+  readSkillCatalog,
+  resolveManagedSkillPath,
+  setSkillEnabled,
+  skillDirectories,
+} from './skill-management.js'
 import { loadingStateScript, normalizeProgress } from './startup-progress.js'
 
 const require = createRequire(import.meta.url)
@@ -57,9 +65,9 @@ function setLocale(locale) {
       automaticEditor: '自动选择',
       noEditor: '未检测到受支持的编辑器',
       nativeOpenFailed: '无法打开本地路径',
-      plugins: '插件',
-      managePlugins: '插件管理…',
-      pluginManager: 'DSH 插件管理',
+      plugins: '扩展',
+      managePlugins: '管理插件与 Skills…',
+      pluginManager: 'DSH 扩展管理',
     } : {
       preparing: 'Preparing the desktop window…',
       loading: 'Starting DeepSeek Harness…',
@@ -84,9 +92,9 @@ function setLocale(locale) {
       automaticEditor: 'Automatic',
       noEditor: 'No supported editor detected',
       nativeOpenFailed: 'Could Not Open Local Path',
-      plugins: 'Plugins',
-      managePlugins: 'Manage Plugins…',
-      pluginManager: 'DSH Plugin Manager',
+      plugins: 'Extensions',
+      managePlugins: 'Manage Plugins & Skills…',
+      pluginManager: 'DSH Extension Manager',
     }
 }
 
@@ -214,12 +222,13 @@ function installDesktopIpc() {
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
   })
-  ipcMain.handle('dsh-desktop:plugins-install', (event, spec) => {
+  ipcMain.handle('dsh-desktop:plugins-install', (event, spec, allowBuildScripts = false) => {
     if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }
     return runPluginOperation(signal => installProfilePlugin({
       dshHome,
       pnpmEntry: resolvePnpmEntry(),
       spec,
+      allowBuildScripts,
       onOutput: writeLog,
       signal,
     }))
@@ -253,11 +262,75 @@ function installDesktopIpc() {
     void shell.openExternal('https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/README.md#profiles')
     return { ok: true }
   })
+  ipcMain.handle('dsh-desktop:skills-list', (event) => {
+    if (!senderIsPluginManager(event) || dshHome === undefined) return { ok: false, error: 'Untrusted skill request' }
+    try {
+      return { ok: true, catalog: readSkillCatalog({ dshHome }) }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('dsh-desktop:skills-create', (event, name, description) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted skill request' }
+    return runPluginOperation(async () => createSkill({ dshHome, name, description }))
+  })
+  ipcMain.handle('dsh-desktop:skills-import', async (event) => {
+    if (!senderIsPluginManager(event) || pluginWindow?.isDestroyed() !== false) {
+      return { ok: false, error: 'Untrusted skill request' }
+    }
+    const selection = await dialog.showOpenDialog(pluginWindow, {
+      title: isChinese ? '选择包含 SKILL.md 的文件夹' : 'Choose a folder containing SKILL.md',
+      properties: ['openDirectory'],
+    })
+    if (selection.canceled || selection.filePaths.length !== 1) {
+      return { ok: true, cancelled: true, catalog: readSkillCatalog({ dshHome }) }
+    }
+    return runPluginOperation(async () => importSkill({ dshHome, sourcePath: selection.filePaths[0] }))
+  })
+  ipcMain.handle('dsh-desktop:skills-enabled', (event, entry, enabled) => {
+    if (!senderIsPluginManager(event) || typeof enabled !== 'boolean') {
+      return { ok: false, error: 'Untrusted skill request' }
+    }
+    return runPluginOperation(async () => setSkillEnabled({ dshHome, entry, enabled }))
+  })
+  ipcMain.handle('dsh-desktop:skills-reveal', (event, entry, enabled) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted skill request' }
+    try {
+      shell.showItemInFolder(resolveManagedSkillPath({ dshHome, entry, enabled }))
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('dsh-desktop:skills-remove', (event, entry, enabled) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted skill request' }
+    return runPluginOperation(async () => {
+      await shell.trashItem(resolveManagedSkillPath({ dshHome, entry, enabled }))
+      return readSkillCatalog({ dshHome })
+    })
+  })
+  ipcMain.handle('dsh-desktop:skills-open-root', async (event) => {
+    if (!senderIsPluginManager(event) || dshHome === undefined) return { ok: false, error: 'Untrusted skill request' }
+    try {
+      const { activeDir } = skillDirectories(dshHome)
+      mkdirSync(activeDir, { recursive: true, mode: 0o700 })
+      await openSystemPath(activeDir)
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('dsh-desktop:skills-docs', (event) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted skill request' }
+    const document = isChinese ? 'README.zh.md' : 'README.md'
+    void shell.openExternal(`https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/skill/skill-filesystem/${document}`)
+    return { ok: true }
+  })
 }
 
 async function runPluginOperation(action) {
   if (dshHome === undefined) return { ok: false, error: 'Harness home is unavailable' }
-  if (pluginOperationRunning) return { ok: false, error: 'Another plugin operation is already running' }
+  if (pluginOperationRunning) return { ok: false, error: 'Another extension operation is already running' }
   pluginOperationRunning = true
   const controller = new AbortController()
   pluginOperationController = controller
@@ -266,7 +339,7 @@ async function runPluginOperation(action) {
     return { ok: true, catalog }
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
-    writeLog('stderr', `Plugin operation failed: ${detail}\n`)
+    writeLog('stderr', `Extension operation failed: ${detail}\n`)
     return { ok: false, error: detail }
   } finally {
     if (pluginOperationController === controller) pluginOperationController = undefined

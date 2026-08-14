@@ -12,7 +12,7 @@
 - 自动使用一个空闲的本地回环端口，不会假设 `3080` 一定可用。
 - 启动后立即显示基于真实阶段的进度，直到本地 Harness 完成加载。
 - 桌面应用与 Harness 服务同时启动、同时退出。
-- 提供独立的 web profile 插件管理页，支持安装、启用/停用和卸载。
+- 提供独立的扩展管理页，支持从 npm 或固定 GitHub 版本管理 web profile 插件，并管理用户 Harness Skills。
 - 对话中的文件入口可直接调用 VS Code、Cursor、VSCodium 或 Zed；工作区可从侧栏菜单、会话标题栏或原生菜单交给编辑器和文件管理器打开。
 - 默认关闭 Electron Node 注入，并阻止不可信页面在应用内导航。
 - 使用 GitHub Actions 构建原生安装包和免安装版本。
@@ -58,9 +58,11 @@ Harness 的具体使用方式可参考上游 [Web UI 指南](https://deepseek-ha
 
 对话里点击代码或文本文件时，桌面适配插件会使用检测到的编辑器打开；HTML、图片、PDF 和目录仍交给系统默认程序。侧栏中每个工作区的 **…** 菜单提供**用编辑器打开**和**打开文件夹**，会话标题栏的 VS Code 图标也会在首选编辑器中打开当前工作区。还可以通过原生菜单的**工作区 → 首选编辑器**选择 VS Code、Cursor、VSCodium 或 Zed。未检测到支持的编辑器时，文件会回退到系统默认程序；显式使用编辑器打开时会显示错误提示。
 
-通过窗口最上方的**插件 → 插件管理…**打开独立管理页。输入 npm Registry 包名，例如 `@scope/dsh-plugin` 或 `package@version`，即可安装插件；已经安装且声明了 DSH bundle 的插件可以启用、停用或卸载，系统 Bundle 只读展示。修改后按照页面提示重启 Harness 即可生效。包管理器已经内置到应用中，Release 用户无需另外安装 pnpm。
+通过窗口最上方的**扩展 → 管理插件与 Skills…**打开独立管理页。**插件**页签管理 `web` profile，既可以输入 `@scope/dsh-plugin`、`package@version` 这样的 npm Registry 包名，也支持 `github:owner/repository#tag-or-commit` 或 `https://github.com/owner/repository.git#tag-or-commit` 格式的公开 GitHub 仓库。GitHub 来源必须指定 Tag 或 Commit，DSH Desktop 会保存 pnpm 最终解析出的 Commit，以便复现安装结果；系统还需要能从 `PATH` 找到 `git`。已经安装且声明了 DSH bundle 的插件可以启用、停用或卸载，系统 Bundle 只读展示。修改后按照页面提示重启 Harness 即可生效。pnpm 已内置到应用中。
 
-插件会在本机以 Harness 相同的操作系统权限执行代码。DSH Desktop 只接受 Registry 包名并展示安装后的包清单，但无法替第三方软件包提供安全背书；安装前请检查发布者和源码。
+GitHub 依赖在首次检查安装时默认禁止运行脚本。如果仓库确实需要安装或构建脚本，页面会提供明确的授权选项；勾选前请检查固定版本对应的源码。插件会在本机以 Harness 相同的操作系统权限执行代码。DSH Desktop 无法替第三方软件包提供安全背书，安装前请检查发布者、源码和依赖树。
+
+**Skills** 页签管理官方 `$DSH_HOME/skills` 用户目录，可以创建符合格式的 `SKILL.md` 模板、导入包含 `SKILL.md` 及资源文件的本地文件夹、在文件管理器中定位、启用或停用，以及移到系统废纸篓。导入时会校验 Harness frontmatter 格式，并拒绝符号链接和过大的目录。停用 Skill 时会将其移动到 DSH Desktop 管理的 `$DSH_HOME/.disabled-skills` 暂存目录。Harness 会监听有效目录，因此 Skills 变化不需要重启。
 
 可以通过**视图 → 重启 Harness**重启本地服务，通过**帮助 → 打开日志目录**查看诊断日志。
 
@@ -71,12 +73,14 @@ DSH Desktop
 ├─ Electron 主进程
 │  ├─ 受限的本地路径打开桥接
 │  ├─ 插件 Profile 服务与内置 pnpm
+│  ├─ 用户 Skill 文件系统管理器
 │  └─ 以 Node 模式运行的内置 Electron
 │     └─ @deepseek-ai/dsh web --patch <桌面适配层> --port 0
 ├─ 沙箱化 Harness 窗口
 │  └─ http://127.0.0.1:<自动分配端口>
-└─ 沙箱化本地插件管理窗口
-   └─ $DSH_HOME/profiles/web/package.json
+└─ 沙箱化本地扩展管理窗口
+   ├─ $DSH_HOME/profiles/web/package.json
+   └─ $DSH_HOME/skills
 ```
 
 桌面能力由本仓库内的独立双端插件 `@dsh-desktop/integration` 提供。启动时应用只把该插件复制到 `$DSH_HOME/profiles/node_modules` 的上游扩展解析目录，再用一次性 `--patch` 加载；不会修改 `@deepseek-ai/dsh` 的 CLI 源码、安装包或用户的 `cordis.patch.yml`。
@@ -126,7 +130,7 @@ git push origin HEAD --follow-tags
 
 DeepSeek Harness 是可以读取和修改所选工作区文件、并按授权执行命令的 Agent Harness。开始任务前，请检查当前工作区、模型提供方和权限提示。
 
-本地 HTTP 服务只绑定 `127.0.0.1`。所有渲染进程都无法访问 Node.js，也不能离开各自限定的 Origin 或本地页面。Harness preload 只接受来自精确 Harness Origin 的工作区范围和授权路径打开消息；独立的插件管理 preload 只接受其精确本地页面发来的固定 Profile 操作，包管理命令只使用参数数组且不经过 Shell。主进程仍会拒绝工作区外路径和符号链接逃逸。漏洞报告方式见 [SECURITY.md](SECURITY.md)。
+本地 HTTP 服务只绑定 `127.0.0.1`。所有渲染进程都无法访问 Node.js，也不能离开各自限定的 Origin 或本地页面。Harness preload 只接受来自精确 Harness Origin 的工作区范围和授权路径打开消息；独立的扩展管理 preload 只接受其精确本地页面发来的固定插件与 Skill 操作，包管理命令只使用参数数组且不经过 Shell。Skill 修改被限制在两个应用管理目录的直属条目内，导入时拒绝符号链接。主进程仍会拒绝工作区外路径和符号链接逃逸。漏洞报告方式见 [SECURITY.md](SECURITY.md)。
 
 ## 项目状态与商标
 

@@ -8,7 +8,9 @@ Only the latest DSH Desktop release is actively supported. Vulnerabilities in th
 
 ## Plugin security
 
-Harness plugins are executable npm packages, not passive themes or data files. They run locally with the same operating-system permissions as Harness. The plugin manager accepts registry package names only, invokes the bundled package manager without a shell, and restricts its IPC bridge to the app's local plugin-manager page. These controls prevent command-string injection; they do not make untrusted plugin code safe. Review a plugin's publisher, source, dependency tree, and requested behavior before installing it.
+Harness plugins are executable packages, not passive themes or data files. They run locally with the same operating-system permissions as Harness. The extension manager accepts registry names or HTTPS GitHub repositories pinned to a tag or commit, invokes the bundled package manager with an argument array rather than a shell, suppresses GitHub dependency scripts on the first pass, and restricts its IPC bridge to the app's local extension page. Script execution for a GitHub dependency requires an explicit UI opt-in. These controls prevent command-string injection; they do not make untrusted plugin code safe. Review a plugin's publisher, pinned source, dependency tree, and requested behavior before installing it.
+
+User Skills can influence model behavior and tool use. DSH Desktop manages only direct entries under `$DSH_HOME/skills` and `$DSH_HOME/.disabled-skills`; imported folders must contain valid Harness frontmatter and cannot contain symbolic links. Removal uses the operating system Trash. These boundaries do not make imported instructions trustworthy, so review every Skill and its resources before enabling it.
 
 ## 报告漏洞
 
@@ -18,4 +20,6 @@ Harness plugins are executable npm packages, not passive themes or data files. T
 
 ## 插件安全
 
-Harness 插件是可以执行代码的 npm 软件包，并非被动的主题或数据文件；它们会在本机以 Harness 相同的操作系统权限运行。插件管理器只接受 Registry 包名，调用内置包管理器时不经过 Shell，并将 IPC 桥接限定在应用自身的本地插件管理页。这些措施可以阻止命令字符串注入，但不能让不可信的插件代码变得安全。安装前请检查插件发布者、源码、依赖树和实际行为。
+Harness 插件是可以执行代码的软件包，并非被动的主题或数据文件；它们会在本机以 Harness 相同的操作系统权限运行。扩展管理器只接受 Registry 包名或固定到 Tag/Commit 的 HTTPS GitHub 仓库，使用参数数组调用内置包管理器而不经过 Shell，首次处理 GitHub 依赖时会禁止运行脚本，并将 IPC 桥接限定在应用自身的本地扩展页。GitHub 依赖执行脚本前必须由用户在界面中明确授权。这些措施可以阻止命令字符串注入，但不能让不可信的插件代码变得安全。安装前请检查插件发布者、固定版本对应的源码、依赖树和实际行为。
+
+用户 Skills 会影响模型行为和工具调用。DSH Desktop 只管理 `$DSH_HOME/skills` 与 `$DSH_HOME/.disabled-skills` 下的直属条目；导入目录必须包含有效的 Harness frontmatter，并且不能包含符号链接。移除操作会使用系统废纸篓。这些边界并不能保证导入指令可信，启用前请检查 Skill 及其全部资源。

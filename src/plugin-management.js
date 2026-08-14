@@ -7,14 +7,17 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { parse, stringify } from 'yaml'
 
 export const PLUGIN_PROFILE = 'web'
-export const MAX_PLUGIN_SPEC_LENGTH = 214
+export const MAX_PLUGIN_SPEC_LENGTH = 300
 export const MAX_PLUGIN_OUTPUT_LENGTH = 64 * 1024
 export const SYSTEM_BUNDLES = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
 
 const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/i
 const PACKAGE_SELECTOR_PATTERN = /^[a-z0-9~^*<>=|+_.-]+$/i
+const GITHUB_SHORTHAND_PATTERN = /^github:([a-z0-9](?:[a-z0-9-]{0,38}))\/([a-z0-9._-]+?)(?:\.git)?#([a-z0-9][a-z0-9._\/-]{0,127})$/i
+const GITHUB_URL_PATTERN = /^(?:git\+)?https:\/\/github\.com\/([a-z0-9](?:[a-z0-9-]{0,38}))\/([a-z0-9._-]+?)(?:\.git)?#([a-z0-9][a-z0-9._\/-]{0,127})$/i
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'))
@@ -24,6 +27,12 @@ function writeJsonAtomic(path, value) {
   mkdirSync(dirname(path), { recursive: true })
   const temporary = `${path}.tmp-${String(process.pid)}-${String(Date.now())}`
   writeFileSync(temporary, `${JSON.stringify(value, undefined, 2)}\n`, { mode: 0o600 })
+  renameSync(temporary, path)
+}
+
+function writeTextAtomic(path, value) {
+  const temporary = `${path}.tmp-${String(process.pid)}-${String(Date.now())}`
+  writeFileSync(temporary, value, { mode: 0o600 })
   renameSync(temporary, path)
 }
 
@@ -45,6 +54,7 @@ function pluginMetadata(profileDir, packageName, requested, enabled) {
   return {
     name: packageName,
     requested,
+    source: /^(?:github:|git\+https:\/\/github\.com\/|https:\/\/github\.com\/)/i.test(requested) ? 'github' : 'npm',
     version: typeof manifest?.version === 'string' ? manifest.version : undefined,
     description: typeof manifest?.description === 'string' ? manifest.description : undefined,
     homepage: typeof manifest?.homepage === 'string' ? manifest.homepage : undefined,
@@ -65,6 +75,23 @@ export function normalizePluginSpec(value) {
   if (spec.length > MAX_PLUGIN_SPEC_LENGTH) throw new Error('Plugin package is too long')
   if (/\s|[\0\r\n]/.test(spec) || spec.startsWith('-')) throw new Error('Invalid plugin package')
 
+  const github = GITHUB_SHORTHAND_PATTERN.exec(spec) ?? GITHUB_URL_PATTERN.exec(spec)
+  if (github !== null) {
+    const [, owner, repository, ref] = github
+    if (ref.includes('..') || ref.includes('//') || ref.endsWith('/')) {
+      throw new Error('Invalid GitHub revision')
+    }
+    return {
+      spec: `github:${owner}/${repository}#${ref}`,
+      source: 'github',
+      repository: `${owner}/${repository}`,
+      ref,
+    }
+  }
+  if (/^(?:github:|(?:git\+)?https:\/\/github\.com\/)/i.test(spec)) {
+    throw new Error('GitHub plugins must use owner/repo#tag-or-commit')
+  }
+
   const slash = spec.startsWith('@') ? spec.indexOf('/') : -1
   const selectorAt = spec.indexOf('@', slash + 1)
   const packageName = selectorAt === -1 ? spec : spec.slice(0, selectorAt)
@@ -73,7 +100,7 @@ export function normalizePluginSpec(value) {
     throw new Error('Use an npm package name with an optional version')
   }
   if (SYSTEM_BUNDLES.has(packageName)) throw new Error('System bundles are managed by DSH Desktop')
-  return { spec, packageName }
+  return { spec, packageName, source: 'npm' }
 }
 
 export function readPluginCatalog({ dshHome, profile = PLUGIN_PROFILE }) {
@@ -179,11 +206,77 @@ export function runPnpm({
   })
 }
 
-export async function installPlugin({ dshHome, pnpmEntry, spec, execPath, env, onOutput, signal, profile = PLUGIN_PROFILE }) {
+function findInstalledPlugin(catalog, previous, normalized) {
+  if (normalized.source === 'npm') {
+    return catalog.plugins.find(candidate => candidate.name === normalized.packageName)
+  }
+  const repository = normalized.repository.toLowerCase()
+  const repositoryMatches = catalog.plugins.filter(candidate => candidate.requested.toLowerCase().includes(repository))
+  if (repositoryMatches.length === 1) return repositoryMatches[0]
+  const changed = catalog.plugins.filter(candidate => previous.get(candidate.name) !== candidate.requested)
+  return changed.length === 1 ? changed[0] : undefined
+}
+
+function githubBuildKey(packageName, normalized) {
+  return `${packageName}@git+https://github.com/${normalized.repository}.git`
+}
+
+function resolvedGitHubCommit(profileDir, packageName) {
+  const lockPath = join(profileDir, 'pnpm-lock.yaml')
+  if (!existsSync(lockPath)) return undefined
+  const lockfile = parse(readFileSync(lockPath, 'utf8'))
+  const dependency = lockfile?.importers?.['.']?.dependencies?.[packageName]
+  const resolution = typeof dependency === 'string' ? dependency : dependency?.version
+  if (typeof resolution !== 'string') return undefined
+  return /(?:\/tar\.gz\/|#)([a-f0-9]{40})(?:$|[?&])/i.exec(resolution)?.[1]
+}
+
+function forgetGitHubBuildPermission(profileDir, plugin) {
+  if (plugin.source !== 'github') return
+  let normalized
+  try {
+    normalized = normalizePluginSpec(plugin.requested)
+  } catch {
+    return
+  }
+  if (normalized.source !== 'github') return
+  const workspacePath = join(profileDir, 'pnpm-workspace.yaml')
+  if (!existsSync(workspacePath)) return
+  const workspace = parse(readFileSync(workspacePath, 'utf8'))
+  if (typeof workspace !== 'object' || workspace === null || Array.isArray(workspace)) return
+  if (typeof workspace.allowBuilds !== 'object' || workspace.allowBuilds === null || Array.isArray(workspace.allowBuilds)) return
+  const key = githubBuildKey(plugin.name, normalized)
+  if (workspace.allowBuilds[key] !== true) return
+  delete workspace.allowBuilds[key]
+  writeTextAtomic(workspacePath, stringify(workspace))
+}
+
+export async function installPlugin({
+  dshHome,
+  pnpmEntry,
+  spec,
+  allowBuildScripts = false,
+  execPath,
+  env,
+  onOutput,
+  signal,
+  profile = PLUGIN_PROFILE,
+  runPnpmImpl = runPnpm,
+}) {
+  if (typeof allowBuildScripts !== 'boolean') throw new Error('Invalid build-script permission')
   const normalized = normalizePluginSpec(spec)
   const profileDir = profileDirectory(dshHome, profile)
-  await runPnpm({
-    args: ['add', '--save-prod', '--reporter', 'append-only', normalized.spec],
+  const before = readPluginCatalog({ dshHome, profile })
+  const previous = new Map(before.plugins.map(plugin => [plugin.name, plugin.requested]))
+  const firstInstall = await runPnpmImpl({
+    args: [
+      'add',
+      '--save-prod',
+      '--reporter',
+      'append-only',
+      ...(normalized.source === 'github' ? ['--ignore-scripts'] : []),
+      normalized.spec,
+    ],
     env,
     execPath,
     onOutput,
@@ -191,18 +284,55 @@ export async function installPlugin({ dshHome, pnpmEntry, spec, execPath, env, o
     profileDir,
     signal,
   })
-  const catalog = readPluginCatalog({ dshHome, profile })
-  const plugin = catalog.plugins.find(candidate => candidate.name === normalized.packageName)
-  if (plugin?.bundle) setPluginEnabled({ dshHome, name: plugin.name, enabled: true, profile })
-  return readPluginCatalog({ dshHome, profile })
+  const buildScriptsIgnored = normalized.source === 'github' && /(?:GIT_DEP_PREPARE_NOT_ALLOWED|IGNORED_BUILDS|build scripts were ignored)/i.test(firstInstall.output)
+  let catalog = readPluginCatalog({ dshHome, profile })
+  let plugin = findInstalledPlugin(catalog, previous, normalized)
+  if (normalized.source === 'github' && plugin === undefined) {
+    throw new Error('Installed the GitHub repository but could not identify its package name')
+  }
+  if (normalized.source === 'github' && plugin !== undefined) {
+    const commit = resolvedGitHubCommit(profileDir, plugin.name)
+    if (commit === undefined) throw new Error('Installed the GitHub repository but could not pin its resolved commit')
+    const pinnedSpec = `github:${normalized.repository}#${commit}`
+    const buildArguments = allowBuildScripts ? [`--allow-build=${githubBuildKey(plugin.name, normalized)}`] : ['--ignore-scripts']
+    await runPnpmImpl({
+      args: ['add', '--save-prod', '--reporter', 'append-only', ...buildArguments, pinnedSpec],
+      env,
+      execPath,
+      onOutput,
+      pnpmEntry,
+      profileDir,
+      signal,
+    })
+    catalog = readPluginCatalog({ dshHome, profile })
+    plugin = catalog.plugins.find(candidate => candidate.name === plugin.name)
+  }
+  if (plugin?.bundle && (!buildScriptsIgnored || allowBuildScripts)) {
+    setPluginEnabled({ dshHome, name: plugin.name, enabled: true, profile })
+  }
+  return {
+    ...readPluginCatalog({ dshHome, profile }),
+    buildScriptsIgnored: buildScriptsIgnored && !allowBuildScripts,
+  }
 }
 
-export async function removePlugin({ dshHome, pnpmEntry, name, execPath, env, onOutput, signal, profile = PLUGIN_PROFILE }) {
+export async function removePlugin({
+  dshHome,
+  pnpmEntry,
+  name,
+  execPath,
+  env,
+  onOutput,
+  signal,
+  profile = PLUGIN_PROFILE,
+  runPnpmImpl = runPnpm,
+}) {
   if (!PACKAGE_NAME_PATTERN.test(name)) throw new Error('Invalid plugin package name')
   if (SYSTEM_BUNDLES.has(name)) throw new Error('System bundles cannot be removed')
   const catalog = readPluginCatalog({ dshHome, profile })
-  if (!catalog.plugins.some(plugin => plugin.name === name)) throw new Error('Plugin is not installed')
-  await runPnpm({
+  const plugin = catalog.plugins.find(candidate => candidate.name === name)
+  if (plugin === undefined) throw new Error('Plugin is not installed')
+  await runPnpmImpl({
     args: ['remove', '--reporter', 'append-only', name],
     env,
     execPath,
@@ -211,6 +341,7 @@ export async function removePlugin({ dshHome, pnpmEntry, name, execPath, env, on
     profileDir: catalog.profileDir,
     signal,
   })
+  forgetGitHubBuildPermission(catalog.profileDir, plugin)
   forgetPluginBundle({ dshHome, name, profile })
   return readPluginCatalog({ dshHome, profile })
 }
