@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -60,11 +61,13 @@ test('authorizes existing files inside canonical workspace roots only', (t) => {
   mkdirSync(workspace)
   writeFileSync(inside, 'export {}\n')
   writeFileSync(outside, 'outside\n')
+  const canonicalWorkspace = realpathSync(workspace)
+  const canonicalInside = realpathSync(inside)
 
   const context = normalizeWorkspaceContext({ active: workspace, roots: [workspace, '/missing'] })
-  assert.equal(context.active, workspace)
-  assert.deepEqual(context.roots, [workspace])
-  assert.equal(authorizeWorkspacePath(inside, context.roots), inside)
+  assert.equal(context.active, canonicalWorkspace)
+  assert.deepEqual(context.roots, [canonicalWorkspace])
+  assert.equal(authorizeWorkspacePath(inside, context.roots), canonicalInside)
   assert.throws(() => authorizeWorkspacePath(outside, context.roots), /outside the active Harness workspaces/)
   assert.throws(() => authorizeWorkspacePath('relative.txt', context.roots), /absolute paths/)
   assert.throws(() => authorizeWorkspacePath(`${inside}\0ignored`, context.roots), /NUL character/)
