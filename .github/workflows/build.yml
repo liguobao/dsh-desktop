@@ -71,6 +71,15 @@ jobs:
       - name: Build packages
         run: npm run ${{ matrix.script }} -- ${{ matrix.arch }}
 
+      - name: Verify Windows package variants
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = @(Get-ChildItem dist -Filter 'DSH-Desktop-v*-windows-*-setup.exe')
+          $portable = @(Get-ChildItem dist -Filter 'DSH-Desktop-v*-windows-*-portable.exe')
+          if ($setup.Count -ne 1) { throw "Expected one Windows setup package, found $($setup.Count)" }
+          if ($portable.Count -ne 1) { throw "Expected one Windows portable package, found $($portable.Count)" }
+
       - name: Upload packages
         uses: actions/upload-artifact@v7
         with:

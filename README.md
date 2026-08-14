@@ -22,12 +22,13 @@ Download the latest package from [GitHub Releases](https://github.com/liguobao/d
 
 | Platform | Package |
 | --- | --- |
-| Windows x64 | `DSH-Desktop-vX.Y.Z-windows-x64-setup.exe` |
+| Windows x64 installer | `DSH-Desktop-vX.Y.Z-windows-x64-setup.exe` |
+| Windows x64 portable | `DSH-Desktop-vX.Y.Z-windows-x64-portable.exe` |
 | macOS Apple Silicon | `DSH-Desktop-vX.Y.Z-macos-arm64.dmg` |
 | macOS Intel | `DSH-Desktop-vX.Y.Z-macos-x64.dmg` |
 | Linux x64 | `DSH-Desktop-vX.Y.Z-linux-x64.AppImage` |
 
-Each release intentionally provides one recommended package per platform and architecture. Archive, portable, and alternative Linux packages are not published.
+Each release provides both installer and portable editions for Windows. Other platforms provide one recommended package per architecture; archive and alternative Linux formats are not published.
 
 The community CI builds are currently unsigned. Windows SmartScreen and macOS Gatekeeper may therefore show a warning. Review the release source and workflow before choosing to continue. On macOS, prefer the standard **Control-click → Open** flow instead of disabling Gatekeeper globally.
 

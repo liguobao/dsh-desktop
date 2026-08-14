@@ -22,12 +22,13 @@
 
 | 平台 | 安装包 |
 | --- | --- |
-| Windows x64 | `DSH-Desktop-vX.Y.Z-windows-x64-setup.exe` |
+| Windows x64 安装版 | `DSH-Desktop-vX.Y.Z-windows-x64-setup.exe` |
+| Windows x64 绿色版 | `DSH-Desktop-vX.Y.Z-windows-x64-portable.exe` |
 | macOS Apple Silicon | `DSH-Desktop-vX.Y.Z-macos-arm64.dmg` |
 | macOS Intel | `DSH-Desktop-vX.Y.Z-macos-x64.dmg` |
 | Linux x64 | `DSH-Desktop-vX.Y.Z-linux-x64.AppImage` |
 
-每个 Release 只提供各平台和架构推荐使用的一种安装包，不再发布压缩包、免安装版或其他 Linux 包格式。
+每个 Release 会同时提供 Windows 安装版和绿色版。其他平台按架构提供一种推荐安装包，不再发布压缩包或其他 Linux 包格式。
 
 当前社区 CI 构建尚未进行商业代码签名，因此 Windows SmartScreen 或 macOS Gatekeeper 可能显示警告。继续运行前建议检查 Release 对应的源码与构建工作流。macOS 请优先使用标准的**按住 Control 点击 → 打开**方式，不要在系统范围关闭 Gatekeeper。
 
