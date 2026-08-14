@@ -16,8 +16,9 @@ export const SYSTEM_BUNDLES = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/ds
 
 const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/i
 const PACKAGE_SELECTOR_PATTERN = /^[a-z0-9~^*<>=|+_.-]+$/i
-const GITHUB_SHORTHAND_PATTERN = /^github:([a-z0-9](?:[a-z0-9-]{0,38}))\/([a-z0-9._-]+?)(?:\.git)?#([a-z0-9][a-z0-9._\/-]{0,127})$/i
-const GITHUB_URL_PATTERN = /^(?:git\+)?https:\/\/github\.com\/([a-z0-9](?:[a-z0-9-]{0,38}))\/([a-z0-9._-]+?)(?:\.git)?#([a-z0-9][a-z0-9._\/-]{0,127})$/i
+const GITHUB_OWNER_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,38})$/i
+const GITHUB_REPOSITORY_PATTERN = /^[a-z0-9._-]+$/i
+const GITHUB_REF_PATTERN = /^[a-z0-9][a-z0-9._\/-]{0,127}$/i
 const GITHUB_BUILD_SCRIPTS = new Set(['preinstall', 'install', 'postinstall', 'prepublish', 'prepack', 'prepare', 'publish'])
 
 function readJson(path) {
@@ -79,6 +80,57 @@ export function profileDirectory(dshHome, profile = PLUGIN_PROFILE) {
   return join(dshHome, 'profiles', profile)
 }
 
+function normalizeGitHubRef(value) {
+  if (value === undefined) return undefined
+  if (!GITHUB_REF_PATTERN.test(value) || value.includes('..') || value.includes('//') || value.endsWith('/')) {
+    throw new Error('Invalid GitHub revision')
+  }
+  return value
+}
+
+function githubSource(spec) {
+  if (spec.toLowerCase().startsWith('github:')) {
+    const source = spec.slice('github:'.length)
+    const hashAt = source.indexOf('#')
+    const path = hashAt === -1 ? source : source.slice(0, hashAt)
+    const ref = hashAt === -1 ? undefined : source.slice(hashAt + 1)
+    const segments = path.split('/')
+    if (segments.length !== 2) throw new Error('Use a GitHub repository address')
+    const owner = segments[0]
+    const repository = segments[1].replace(/\.git$/i, '')
+    if (!GITHUB_OWNER_PATTERN.test(owner) || !GITHUB_REPOSITORY_PATTERN.test(repository)) {
+      throw new Error('Use a GitHub repository address')
+    }
+    return { owner, repository, ref: normalizeGitHubRef(ref) }
+  }
+
+  if (!/^(?:git\+)?https:\/\/github\.com\//i.test(spec)) return undefined
+  let url
+  try {
+    url = new URL(spec.replace(/^git\+/i, ''))
+  } catch {
+    throw new Error('Use a GitHub repository address')
+  }
+  const segments = url.pathname.split('/').filter(Boolean)
+  const owner = segments[0]
+  const repository = segments[1]?.replace(/\.git$/i, '')
+  if (
+    url.protocol !== 'https:'
+    || url.hostname.toLowerCase() !== 'github.com'
+    || url.port !== ''
+    || url.username !== ''
+    || url.password !== ''
+    || url.search !== ''
+    || segments.length !== 2
+    || !GITHUB_OWNER_PATTERN.test(owner ?? '')
+    || !GITHUB_REPOSITORY_PATTERN.test(repository ?? '')
+  ) {
+    throw new Error('Use a GitHub repository address')
+  }
+  const ref = url.hash === '' ? undefined : url.hash.slice(1)
+  return { owner, repository, ref: normalizeGitHubRef(ref) }
+}
+
 export function normalizePluginSpec(value) {
   if (typeof value !== 'string') throw new Error('Plugin package is required')
   const spec = value.trim()
@@ -86,21 +138,15 @@ export function normalizePluginSpec(value) {
   if (spec.length > MAX_PLUGIN_SPEC_LENGTH) throw new Error('Plugin package is too long')
   if (/\s|[\0\r\n]/.test(spec) || spec.startsWith('-')) throw new Error('Invalid plugin package')
 
-  const github = GITHUB_SHORTHAND_PATTERN.exec(spec) ?? GITHUB_URL_PATTERN.exec(spec)
-  if (github !== null) {
-    const [, owner, repository, ref] = github
-    if (ref.includes('..') || ref.includes('//') || ref.endsWith('/')) {
-      throw new Error('Invalid GitHub revision')
-    }
+  const github = githubSource(spec)
+  if (github !== undefined) {
+    const { owner, repository, ref } = github
     return {
-      spec: `github:${owner}/${repository}#${ref}`,
+      spec: `github:${owner}/${repository}${ref === undefined ? '' : `#${ref}`}`,
       source: 'github',
       repository: `${owner}/${repository}`,
-      ref,
+      ...(ref === undefined ? {} : { ref }),
     }
-  }
-  if (/^(?:github:|(?:git\+)?https:\/\/github\.com\/)/i.test(spec)) {
-    throw new Error('GitHub plugins must use owner/repo#tag-or-commit')
   }
 
   const slash = spec.startsWith('@') ? spec.indexOf('/') : -1
@@ -217,6 +263,87 @@ export function runPnpm({
   })
 }
 
+export function runGit({
+  args,
+  cwd,
+  env = process.env,
+  signal,
+  spawnImpl = nodeSpawn,
+  onOutput = () => {},
+}) {
+  if (!Array.isArray(args) || args.some(argument => typeof argument !== 'string')) {
+    return Promise.reject(new Error('Invalid git arguments'))
+  }
+  return new Promise((resolve, reject) => {
+    const child = spawnImpl('git', args, {
+      cwd,
+      env: {
+        ...env,
+        GIT_TERMINAL_PROMPT: '0',
+        GCM_INTERACTIVE: 'Never',
+      },
+      windowsHide: true,
+      shell: false,
+      signal,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let output = ''
+    const capture = (source, chunk) => {
+      output = appendOutput(output, chunk)
+      onOutput(source, String(chunk))
+    }
+    child.stdout?.on('data', chunk => capture('stdout', chunk))
+    child.stderr?.on('data', chunk => capture('stderr', chunk))
+    child.once('error', (error) => {
+      if (error?.code === 'ENOENT') reject(new Error('Git is required to install or update GitHub plugins'))
+      else reject(error)
+    })
+    child.once('exit', (code, signal) => {
+      if (code === 0) resolve({ output })
+      else {
+        const detail = output.trim() || `git exited with code ${String(code)} and signal ${String(signal)}`
+        reject(new Error(detail))
+      }
+    })
+  })
+}
+
+function githubRemote(normalized) {
+  return `https://github.com/${normalized.repository}.git`
+}
+
+async function resolveLatestGitHubTag({ normalized, cwd, env, onOutput, signal, runGitImpl }) {
+  const result = await runGitImpl({
+    args: ['ls-remote', '--tags', '--refs', '--sort=-version:refname', githubRemote(normalized)],
+    cwd,
+    env,
+    onOutput,
+    signal,
+  })
+  for (const line of result.output.split(/\r?\n/)) {
+    const match = /^[a-f0-9]{40}\s+refs\/tags\/(.+)$/i.exec(line)
+    if (match === null) continue
+    const ref = normalizeGitHubRef(match[1])
+    return { ...normalized, ref, spec: `github:${normalized.repository}#${ref}` }
+  }
+  throw new Error('The GitHub repository has no tags')
+}
+
+async function resolveGitHubDefaultCommit({ normalized, cwd, env, onOutput, signal, runGitImpl }) {
+  const result = await runGitImpl({
+    args: ['ls-remote', '--symref', githubRemote(normalized), 'HEAD'],
+    cwd,
+    env,
+    onOutput,
+    signal,
+  })
+  for (const line of result.output.split(/\r?\n/)) {
+    const match = /^([a-f0-9]{40})\s+HEAD$/i.exec(line)
+    if (match !== null) return match[1].toLowerCase()
+  }
+  throw new Error('Could not resolve the GitHub repository default branch')
+}
+
 function findInstalledPlugin(catalog, previous, normalized) {
   if (normalized.source === 'npm') {
     return catalog.plugins.find(candidate => candidate.name === normalized.packageName)
@@ -238,6 +365,15 @@ function pluginUsesGitHubRepository(plugin, repository) {
 
 function githubBuildKey(packageName, normalized) {
   return `${packageName}@git+https://github.com/${normalized.repository}.git`
+}
+
+function githubBuildAllowed(profileDir, plugin, normalized) {
+  const workspacePath = join(profileDir, 'pnpm-workspace.yaml')
+  if (!existsSync(workspacePath)) return false
+  const workspace = parse(readFileSync(workspacePath, 'utf8'))
+  if (typeof workspace !== 'object' || workspace === null || Array.isArray(workspace)) return false
+  if (typeof workspace.allowBuilds !== 'object' || workspace.allowBuilds === null || Array.isArray(workspace.allowBuilds)) return false
+  return workspace.allowBuilds[githubBuildKey(plugin.name, normalized)] === true
 }
 
 function resolvedGitHubCommit(profileDir, packageName) {
@@ -280,11 +416,15 @@ export async function installPlugin({
   onOutput,
   signal,
   profile = PLUGIN_PROFILE,
+  runGitImpl = runGit,
   runPnpmImpl = runPnpm,
 }) {
   if (typeof allowBuildScripts !== 'boolean') throw new Error('Invalid build-script permission')
-  const normalized = normalizePluginSpec(spec)
+  let normalized = normalizePluginSpec(spec)
   const profileDir = profileDirectory(dshHome, profile)
+  if (normalized.source === 'github' && normalized.ref === undefined) {
+    normalized = await resolveLatestGitHubTag({ normalized, cwd: profileDir, env, onOutput, signal, runGitImpl })
+  }
   const before = readPluginCatalog({ dshHome, profile })
   const previous = new Map(before.plugins.map(plugin => [plugin.name, plugin.requested]))
   const firstInstall = await runPnpmImpl({
@@ -353,12 +493,73 @@ export async function installPlugin({
   }
   const requiredBuildScriptsIgnored = buildScriptsIgnored && plugin !== undefined
     && installedPluginRequiresBuild(profileDir, plugin.name)
-  if (plugin?.bundle && (!requiredBuildScriptsIgnored || allowBuildScripts)) {
-    setPluginEnabled({ dshHome, name: plugin.name, enabled: true, profile })
+  if (plugin?.bundle) {
+    setPluginEnabled({
+      dshHome,
+      name: plugin.name,
+      enabled: !requiredBuildScriptsIgnored || allowBuildScripts,
+      profile,
+    })
   }
   return {
     ...readPluginCatalog({ dshHome, profile }),
     buildScriptsIgnored: requiredBuildScriptsIgnored && !allowBuildScripts,
+  }
+}
+
+export async function updatePlugin({
+  dshHome,
+  pnpmEntry,
+  name,
+  execPath,
+  env,
+  onOutput,
+  signal,
+  profile = PLUGIN_PROFILE,
+  runGitImpl = runGit,
+  runPnpmImpl = runPnpm,
+}) {
+  if (!PACKAGE_NAME_PATTERN.test(name)) throw new Error('Invalid plugin package name')
+  if (SYSTEM_BUNDLES.has(name)) throw new Error('System bundles cannot be updated')
+  const before = readPluginCatalog({ dshHome, profile })
+  const plugin = before.plugins.find(candidate => candidate.name === name)
+  if (plugin === undefined) throw new Error('Plugin is not installed')
+  const normalized = normalizePluginSpec(plugin.requested)
+  if (normalized.source !== 'github') throw new Error('Only GitHub plugins support online updates')
+  const commit = await resolveGitHubDefaultCommit({
+    normalized,
+    cwd: before.profileDir,
+    env,
+    onOutput,
+    signal,
+    runGitImpl,
+  })
+  if (normalized.ref?.toLowerCase() === commit) return { ...before, upToDate: true }
+
+  const wasEnabled = plugin.enabled
+  const result = await installPlugin({
+    dshHome,
+    pnpmEntry,
+    spec: `github:${normalized.repository}#${commit}`,
+    allowBuildScripts: githubBuildAllowed(before.profileDir, plugin, normalized),
+    execPath,
+    env,
+    onOutput,
+    signal,
+    profile,
+    runGitImpl,
+    runPnpmImpl,
+  })
+  let catalog = readPluginCatalog({ dshHome, profile })
+  const updated = catalog.plugins.find(candidate => pluginUsesGitHubRepository(candidate, normalized.repository))
+  if (!wasEnabled && updated?.bundle && updated.enabled) {
+    setPluginEnabled({ dshHome, name: updated.name, enabled: false, profile })
+    catalog = readPluginCatalog({ dshHome, profile })
+  }
+  return {
+    ...catalog,
+    buildScriptsIgnored: result.buildScriptsIgnored,
+    upToDate: false,
   }
 }
 

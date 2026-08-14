@@ -5,29 +5,29 @@
     documentTitle: 'DSH 插件', appTitle: '插件', refresh: '刷新', docs: '文档',
     pageTitle: 'Harness 插件',
     trust: '插件会在本机以 Harness 的相同权限运行，请只安装你信任的代码。', installLabel: '从 npm 或 GitHub 安装',
-    placeholder: '@scope/plugin@version 或 github:owner/repo#v1.0.0', install: '安装', installing: '安装中…',
-    hint: 'GitHub 来源必须在 # 后指定 Tag 或 Commit；插件修改后需要重启 Harness。',
+    placeholder: '@scope/plugin@version 或 https://github.com/owner/repo', install: '安装', installing: '安装中…',
+    hint: 'GitHub 仓库默认安装最新 Tag；在线更新获取默认分支最新版。',
     buildLabel: '允许这个 GitHub 软件包运行安装和构建脚本；勾选前请先检查源码。', installed: '已安装插件', managed: '管理目录',
     empty: '尚未安装用户插件。', system: '系统 Bundle', systemNote: 'web profile 运行所必需', loading: '正在加载…',
     count: count => `${count} 个用户插件`, enabled: '已启用', disabled: '已停用', invalid: '不是 DSH 插件', missing: '文件缺失', bundled: '随 Harness 提供',
-    enable: '启用', disable: '停用', uninstall: '卸载', confirmRemove: name => `确定要卸载 ${name} 吗？`,
+    enable: '启用', disable: '停用', update: '在线更新', updating: '正在获取默认分支最新版…', uninstall: '卸载', confirmRemove: name => `确定要卸载 ${name} 吗？`,
     restartText: '插件设置已更改，需要重启 Harness 后生效。', restart: '立即重启', restarting: '正在重启…',
-    installedMessage: '插件安装完成。', removed: '插件已卸载。', changed: '插件状态已更新。',
-    buildSkipped: '仓库需要运行构建脚本，当前插件尚未启用。检查固定版本源码后，勾选构建脚本授权并重新安装。',
+    installedMessage: '插件安装完成。', updated: '插件已更新。', upToDate: '已是最新版本。', removed: '插件已卸载。', changed: '插件状态已更新。',
+    buildSkipped: '仓库需要运行构建脚本，当前插件尚未启用。检查源码后，勾选构建脚本授权并重新安装。',
     unavailable: '插件管理桥接不可用，请重新启动 DSH Desktop。', unavailableSummary: '不可用', unknownError: '插件操作失败。',
   } : {
     documentTitle: 'DSH Plugins', appTitle: 'Plugins', refresh: 'Refresh', docs: 'Documentation',
     pageTitle: 'Harness Plugins',
     trust: 'Plugins run locally with the same permissions as Harness. Install only code you trust.', installLabel: 'Install from npm or GitHub',
-    placeholder: '@scope/plugin@version or github:owner/repo#v1.0.0', install: 'Install', installing: 'Installing…',
-    hint: 'GitHub sources must specify a tag or commit after #. Plugin changes require a Harness restart.',
+    placeholder: '@scope/plugin@version or https://github.com/owner/repo', install: 'Install', installing: 'Installing…',
+    hint: 'GitHub repositories install the latest tag. Online updates use the latest default branch.',
     buildLabel: 'Allow this GitHub package to run install and build scripts. Review its source first.', installed: 'Installed plugins', managed: 'Managed in',
     empty: 'No user plugins are installed.', system: 'System bundles', systemNote: 'Required by the web profile', loading: 'Loading…',
     count: count => `${count} user plugin${count === 1 ? '' : 's'}`, enabled: 'Enabled', disabled: 'Disabled', invalid: 'Not a DSH plugin', missing: 'Files missing', bundled: 'Bundled with Harness',
-    enable: 'Enable', disable: 'Disable', uninstall: 'Uninstall', confirmRemove: name => `Uninstall ${name}?`,
+    enable: 'Enable', disable: 'Disable', update: 'Update online', updating: 'Fetching the latest default branch…', uninstall: 'Uninstall', confirmRemove: name => `Uninstall ${name}?`,
     restartText: 'Plugin settings changed. Restart Harness to apply them.', restart: 'Restart now', restarting: 'Restarting…',
-    installedMessage: 'Plugin installed.', removed: 'Plugin uninstalled.', changed: 'Plugin status updated.',
-    buildSkipped: 'This repository requires build scripts, so the plugin was not enabled. Review the pinned source, allow build scripts, and install it again.',
+    installedMessage: 'Plugin installed.', updated: 'Plugin updated.', upToDate: 'Already up to date.', removed: 'Plugin uninstalled.', changed: 'Plugin status updated.',
+    buildSkipped: 'This repository requires build scripts, so the plugin was not enabled. Review the source, allow build scripts, and install it again.',
     unavailable: 'The plugin manager bridge is unavailable. Restart DSH Desktop.', unavailableSummary: 'Unavailable', unknownError: 'Plugin operation failed.',
   }
 
@@ -101,6 +101,9 @@
       actions.append(textElement('span', `status${plugin.enabled ? '' : ' status--off'}`, plugin.enabled ? strings.enabled : strings.disabled))
       actions.append(toggleButton(plugin.enabled, `${plugin.enabled ? strings.disable : strings.enable} ${plugin.name}`, () => void changeEnabled(plugin.name, !plugin.enabled)))
     }
+    if (!system && plugin.source === 'github' && plugin.installed) {
+      actions.append(actionButton(strings.update, 'button button--small', () => void update(plugin.name)))
+    }
     if (!system) actions.append(actionButton(strings.uninstall, 'button button--danger button--small', () => void uninstall(plugin.name)))
     row.append(main, actions)
     return row
@@ -165,6 +168,23 @@
     catalog = result.catalog
     restartRequired = true
     setFeedback(elements.feedback, strings.changed)
+    render()
+  }
+
+  async function update(name) {
+    if (busy) return
+    setFeedback(elements.feedback, strings.updating)
+    setBusy(true)
+    const result = await api.update(name)
+    setBusy(false)
+    if (!result?.ok) return setFeedback(elements.feedback, errorText(result, strings.unknownError), 'error')
+    catalog = result.catalog
+    if (catalog.upToDate) {
+      setFeedback(elements.feedback, strings.upToDate)
+    } else {
+      restartRequired = true
+      setFeedback(elements.feedback, catalog.buildScriptsIgnored ? strings.buildSkipped : strings.updated, catalog.buildScriptsIgnored ? 'error' : 'info')
+    }
     render()
   }
 

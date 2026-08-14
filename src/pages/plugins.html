@@ -30,12 +30,12 @@
       <form class="form-block" id="plugin-install-form">
         <label for="plugin-spec" id="plugin-install-label">Install from npm or GitHub</label>
         <div class="form-row">
-          <input id="plugin-spec" name="plugin" type="text" maxlength="300" autocomplete="off" spellcheck="false" placeholder="@scope/plugin@version or github:owner/repo#v1.0.0" required>
+          <input id="plugin-spec" name="plugin" type="text" maxlength="300" autocomplete="off" spellcheck="false" placeholder="@scope/plugin@version or https://github.com/owner/repo" required>
           <button class="button button--primary" id="plugin-install" type="submit">Install</button>
         </div>
         <div class="form-tips">
           <p class="form-hint form-hint--warning" id="plugin-trust">Plugins run locally with the same permissions as Harness. Install only code you trust.</p>
-          <p class="form-hint" id="plugin-install-hint">GitHub sources must include a tag or commit after #. Plugin changes require a Harness restart.</p>
+          <p class="form-hint" id="plugin-install-hint">GitHub repositories install the latest tag. Online updates use the latest default branch.</p>
         </div>
         <label class="build-option" id="build-option" hidden>
           <input id="allow-build" type="checkbox">

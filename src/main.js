@@ -24,6 +24,7 @@ import {
   readPluginCatalog,
   removePlugin as removeProfilePlugin,
   setPluginEnabled,
+  updatePlugin as updateProfilePlugin,
 } from './plugin-management.js'
 import {
   createSkill,
@@ -66,8 +67,8 @@ function setLocale(locale) {
       noEditor: '未检测到受支持的编辑器',
       nativeOpenFailed: '无法打开本地路径',
       extensions: '扩展',
-      managePlugins: '插件',
-      manageExtensions: 'Skills',
+      managePlugins: '插件安装',
+      manageExtensions: 'Skills管理',
       pluginManager: 'DSH 插件管理',
       extensionManager: 'DSH Skills',
     } : {
@@ -95,8 +96,8 @@ function setLocale(locale) {
       noEditor: 'No supported editor detected',
       nativeOpenFailed: 'Could Not Open Local Path',
       extensions: 'Extensions',
-      managePlugins: 'Plugins',
-      manageExtensions: 'Skills',
+      managePlugins: 'Plugin Installation',
+      manageExtensions: 'Skills Management',
       pluginManager: 'DSH Plugin Manager',
       extensionManager: 'DSH Skills',
     }
@@ -255,6 +256,16 @@ function installDesktopIpc() {
       setPluginEnabled({ dshHome, name, enabled })
       return readPluginCatalog({ dshHome })
     })
+  })
+  ipcMain.handle('dsh-desktop:plugins-update', (event, name) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }
+    return runPluginOperation(signal => updateProfilePlugin({
+      dshHome,
+      pnpmEntry: resolvePnpmEntry(),
+      name,
+      onOutput: writeLog,
+      signal,
+    }))
   })
   ipcMain.handle('dsh-desktop:plugins-remove', (event, name) => {
     if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }

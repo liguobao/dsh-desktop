@@ -12,7 +12,7 @@
 - 自动使用一个空闲的本地回环端口，不会假设 `3080` 一定可用。
 - 启动后立即显示基于真实阶段的进度，直到本地 Harness 完成加载。
 - 桌面应用与 Harness 服务同时启动、同时退出。
-- 提供独立的插件和扩展管理窗口，支持从 npm 或固定 GitHub 版本管理 web profile 插件，并管理以 Skill 形式加载的用户扩展。
+- 提供独立的插件安装和 Skills 管理窗口，支持 npm、GitHub 插件和用户 Skills。
 - 对话中的文件入口可直接调用 VS Code、Cursor、VSCodium 或 Zed；工作区可从侧栏菜单、会话标题栏或原生菜单交给编辑器和文件管理器打开。
 - 默认关闭 Electron Node 注入，并阻止不可信页面在应用内导航。
 - 使用 GitHub Actions 构建原生安装包和免安装版本。
@@ -58,11 +58,11 @@ Harness 的具体使用方式可参考上游 [Web UI 指南](https://deepseek-ha
 
 对话里点击代码或文本文件时，桌面适配插件会使用检测到的编辑器打开；HTML、图片、PDF 和目录仍交给系统默认程序。侧栏中每个工作区的 **…** 菜单提供**用编辑器打开**和**打开文件夹**，会话标题栏的 VS Code 图标也会在首选编辑器中打开当前工作区。还可以通过原生菜单的**工作区 → 首选编辑器**选择 VS Code、Cursor、VSCodium 或 Zed。未检测到支持的编辑器时，文件会回退到系统默认程序；显式使用编辑器打开时会显示错误提示。
 
-窗口最上方的**扩展**菜单提供**插件**和 **Skills** 两个选项，分别打开可以同时使用的独立窗口。插件窗口管理 `web` profile，既可以输入 `@scope/dsh-plugin`、`package@version` 这样的 npm Registry 包名，也支持 `github:owner/repository#tag-or-commit` 或 `https://github.com/owner/repository.git#tag-or-commit` 格式的公开 GitHub 仓库。GitHub 来源必须指定 Tag 或 Commit，DSH Desktop 会保存 pnpm 最终解析出的 Commit，以便复现安装结果；系统还需要能从 `PATH` 找到 `git`。已经安装且声明了 DSH bundle 的插件可以启用、停用或卸载，系统 Bundle 只读展示。修改后按照页面提示重启 Harness 即可生效。pnpm 已内置到应用中。
+窗口最上方的**扩展**菜单提供**插件安装**和 **Skills管理**。插件支持 npm 包名和 GitHub 仓库地址；未指定版本时安装最新 Tag，并固定到 Commit。已安装的 GitHub 插件可在线更新到默认分支最新版。修改后需重启 Harness。
 
-GitHub 依赖在首次检查安装时默认禁止运行脚本。如果仓库确实需要安装或构建脚本，页面会提供明确的授权选项；勾选前请检查固定版本对应的源码。插件会在本机以 Harness 相同的操作系统权限执行代码。DSH Desktop 无法替第三方软件包提供安全背书，安装前请检查发布者、源码和依赖树。
+GitHub 插件默认禁用安装和构建脚本，确有需要时可在页面授权。插件拥有与 Harness 相同的本机权限，请仅安装可信代码。
 
-扩展窗口管理官方 `$DSH_HOME/skills` 用户目录，可以创建符合格式的 `SKILL.md` 模板、导入包含 `SKILL.md` 及资源文件的本地文件夹、在文件管理器中定位、启用或停用，以及移到系统废纸篓。导入时会校验 Harness frontmatter 格式，并拒绝符号链接和过大的目录。停用扩展时会将其移动到 DSH Desktop 管理的 `$DSH_HOME/.disabled-skills` 暂存目录。Harness 会监听有效目录，因此扩展变化不需要重启。
+Skills 管理窗口支持创建、导入、定位、启停和删除用户 Skill。Skill 变化不需要重启 Harness。
 
 可以通过**视图 → 重启 Harness**重启本地服务，通过**帮助 → 打开日志目录**查看诊断日志。
 

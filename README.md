@@ -12,7 +12,7 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 - Uses a random free loopback port instead of assuming port `3080` is available.
 - Shows immediate, stage-based startup progress while the local Harness becomes ready.
 - Starts and stops the Harness server together with the desktop application.
-- Manages web-profile plugins from npm or pinned GitHub revisions, plus Skills-based user extensions, in separate desktop windows.
+- Provides separate plugin installation and Skills management windows for npm, GitHub, and user Skills.
 - Opens conversation files in VS Code, Cursor, VSCodium, or Zed, with workspace actions in the sidebar, session header, and native menu.
 - Keeps Electron's Node integration disabled and blocks untrusted in-app navigation.
 - Includes native installers and portable packages built by GitHub Actions.
@@ -58,11 +58,11 @@ See the upstream [Web UI guide](https://deepseek-harness.github.io/deepseek-harn
 
 Clicking a code or text file in a conversation opens it in the detected editor. HTML, images, PDFs, and directories continue to use their system-default application. Each workspace's sidebar **…** menu offers **Open in Editor** and **Open Folder**; the VS Code icon in the session header also opens the current workspace in the preferred editor. Select VS Code, Cursor, VSCodium, or Zed through the native **Workspace → Preferred Editor** menu. Files fall back to the system-default application when no supported editor is detected; an explicit editor action reports an error instead.
 
-The **Extensions** menu at the top of the window provides separate **Plugins** and **Skills** commands. Each opens its own window, and both windows can remain open together. The plugin window manages the `web` profile. It accepts an npm registry package such as `@scope/dsh-plugin` or `package@version`, and a public GitHub source in either `github:owner/repository#tag-or-commit` or `https://github.com/owner/repository.git#tag-or-commit` form. A GitHub revision is mandatory, and DSH Desktop saves the commit resolved by pnpm so later installs remain repeatable; GitHub installation also requires `git` to be available on `PATH`. Installed DSH bundles can be enabled, disabled, or uninstalled, while system bundles remain read-only. Restart Harness from the page when prompted. pnpm is bundled with the app.
+The **Extensions** menu provides **Plugin Installation** and **Skills Management**. Plugins accept npm package names and GitHub repository URLs. An unversioned repository installs its latest tag and is pinned to a commit. Installed GitHub plugins can update online to the latest commit on the default branch. Restart Harness after plugin changes.
 
-GitHub dependency scripts are suppressed during the initial inspection install. If a repository needs install or build scripts, the page offers an explicit opt-in; review the exact pinned revision before enabling it. Plugins execute local code with the same operating-system permissions as Harness. DSH Desktop cannot establish that a third-party package is safe—review the publisher, source, and dependency tree before installing it.
+GitHub install and build scripts are disabled by default and can be explicitly allowed when required. Plugins run with the same local permissions as Harness, so install only trusted code.
 
-The extension window manages the official `$DSH_HOME/skills` user directory. It can create a valid `SKILL.md` template, import a local folder containing `SKILL.md` and its resources, reveal an entry in the file manager, enable or disable it, and move it to the system Trash. Imported folders are validated against the Harness frontmatter format; symbolic links and oversized imports are rejected. Disabling an extension moves it to DSH Desktop's `$DSH_HOME/.disabled-skills` holding directory. Harness watches the active directory, so extension changes do not require a restart.
+Skills Management can create, import, reveal, enable, disable, and delete user Skills. Skill changes do not require a Harness restart.
 
 The **View → Restart Harness** command restarts the local service. Diagnostic output is available through **Help → Open Logs Folder**.
 
