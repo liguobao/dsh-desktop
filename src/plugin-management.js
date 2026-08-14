@@ -18,6 +18,7 @@ const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$
 const PACKAGE_SELECTOR_PATTERN = /^[a-z0-9~^*<>=|+_.-]+$/i
 const GITHUB_SHORTHAND_PATTERN = /^github:([a-z0-9](?:[a-z0-9-]{0,38}))\/([a-z0-9._-]+?)(?:\.git)?#([a-z0-9][a-z0-9._\/-]{0,127})$/i
 const GITHUB_URL_PATTERN = /^(?:git\+)?https:\/\/github\.com\/([a-z0-9](?:[a-z0-9-]{0,38}))\/([a-z0-9._-]+?)(?:\.git)?#([a-z0-9][a-z0-9._\/-]{0,127})$/i
+const GITHUB_BUILD_SCRIPTS = new Set(['preinstall', 'install', 'postinstall', 'prepublish', 'prepack', 'prepare', 'publish'])
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'))
@@ -46,6 +47,16 @@ function readInstalledManifest(profileDir, packageName) {
   } catch {
     return undefined
   }
+}
+
+function installedPluginRequiresBuild(profileDir, packageName) {
+  const manifest = readInstalledManifest(profileDir, packageName)
+  const scripts = manifest?.scripts
+  const declaresBuildScript = scripts !== undefined && scripts !== null && typeof scripts === 'object'
+    && Object.entries(scripts).some(([name, command]) =>
+      GITHUB_BUILD_SCRIPTS.has(name) && typeof command === 'string' && command.trim() !== '',
+    )
+  return declaresBuildScript || existsSync(join(profileDir, 'node_modules', ...packageName.split('/'), 'binding.gyp'))
 }
 
 function pluginMetadata(profileDir, packageName, requested, enabled) {
@@ -307,12 +318,14 @@ export async function installPlugin({
     catalog = readPluginCatalog({ dshHome, profile })
     plugin = catalog.plugins.find(candidate => candidate.name === plugin.name)
   }
-  if (plugin?.bundle && (!buildScriptsIgnored || allowBuildScripts)) {
+  const requiredBuildScriptsIgnored = buildScriptsIgnored && plugin !== undefined
+    && installedPluginRequiresBuild(profileDir, plugin.name)
+  if (plugin?.bundle && (!requiredBuildScriptsIgnored || allowBuildScripts)) {
     setPluginEnabled({ dshHome, name: plugin.name, enabled: true, profile })
   }
   return {
     ...readPluginCatalog({ dshHome, profile }),
-    buildScriptsIgnored: buildScriptsIgnored && !allowBuildScripts,
+    buildScriptsIgnored: requiredBuildScriptsIgnored && !allowBuildScripts,
   }
 }
 

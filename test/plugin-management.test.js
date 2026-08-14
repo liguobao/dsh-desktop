@@ -160,7 +160,10 @@ test('keeps a GitHub bundle disabled when its required build scripts were not ap
     manifest.dependencies['github-plugin'] = args.at(-1)
     writeJson(profileManifest, manifest)
     writeJson(join(profileDir, 'node_modules', 'github-plugin', 'package.json'), {
-      name: 'github-plugin', version: '1.0.0', dsh: { bundle: { patch: 'cordis.patch.yml' } },
+      name: 'github-plugin',
+      version: '1.0.0',
+      scripts: { prepare: 'node build.js' },
+      dsh: { bundle: { patch: 'cordis.patch.yml' } },
     })
     writeFileSync(join(profileDir, 'pnpm-lock.yaml'), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      github-plugin:\n        specifier: ${JSON.stringify(args.at(-1))}\n        version: https://codeload.github.com/example/github-plugin/tar.gz/${commit}\n`)
     return { output: invocation === 1 ? '[ERR_PNPM_IGNORED_BUILDS] build scripts were ignored' : '' }
@@ -172,6 +175,33 @@ test('keeps a GitHub bundle disabled when its required build scripts were not ap
   assert.equal(invocation, 2)
   assert.equal(catalog.buildScriptsIgnored, true)
   assert.equal(catalog.plugins[0].enabled, false)
+})
+
+test('enables a prebuilt GitHub bundle when pnpm reports only a packlist build warning', async (t) => {
+  const dshHome = temporaryDirectory(t)
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const profileManifest = join(profileDir, 'package.json')
+  const commit = 'abcdef1234567890abcdef1234567890abcdef12'
+  writeJson(profileManifest, {
+    name: 'dsh-profile-web', private: true, dependencies: {}, dsh: { profile: { bundles: [] } },
+  })
+  const runPnpmImpl = async ({ args }) => {
+    const manifest = JSON.parse(readFileSync(profileManifest, 'utf8'))
+    manifest.dependencies['prebuilt-plugin'] = args.at(-1)
+    writeJson(profileManifest, manifest)
+    writeJson(join(profileDir, 'node_modules', 'prebuilt-plugin', 'package.json'), {
+      name: 'prebuilt-plugin', version: '1.0.0', dsh: { bundle: { patch: 'cordis.patch.yml' } },
+    })
+    writeFileSync(join(profileDir, 'pnpm-lock.yaml'), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      prebuilt-plugin:\n        specifier: ${JSON.stringify(args.at(-1))}\n        version: https://codeload.github.com/example/prebuilt-plugin/tar.gz/${commit}\n`)
+    return { output: '[WARN] The git-hosted package has to be built but the build scripts were ignored.' }
+  }
+
+  const catalog = await installPlugin({
+    dshHome, pnpmEntry: '/pnpm.mjs', spec: 'github:example/prebuilt-plugin#v1.0.0', runPnpmImpl,
+  })
+  assert.equal(catalog.buildScriptsIgnored, false)
+  assert.equal(catalog.plugins[0].bundle, true)
+  assert.equal(catalog.plugins[0].enabled, true)
 })
 
 test('removes only the build permission granted for an uninstalled GitHub plugin', async (t) => {
