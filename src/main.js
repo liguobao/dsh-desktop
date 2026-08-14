@@ -168,9 +168,10 @@ function saveEditorPreference(preference) {
 function installDesktopIpc() {
   if (desktopIpcInstalled) return
   desktopIpcInstalled = true
-  ipcMain.handle('dsh-desktop:open-path', (event, path) => {
+  ipcMain.handle('dsh-desktop:open-path', (event, path, intent = 'auto') => {
     if (!senderIsHarness(event)) return { ok: false, error: 'Untrusted path-open request' }
-    return reportDesktopAction(() => openDesktopPath(path))
+    if (!['auto', 'editor', 'default'].includes(intent)) return { ok: false, error: 'Invalid path-open intent' }
+    return reportDesktopAction(() => openDesktopPath(path, intent))
   })
   ipcMain.on('dsh-desktop:workspace-context', (event, value) => {
     if (!senderIsHarness(event)) return

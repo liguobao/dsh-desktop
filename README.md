@@ -12,7 +12,7 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 - Uses a random free loopback port instead of assuming port `3080` is available.
 - Shows immediate, stage-based startup progress while the local Harness becomes ready.
 - Starts and stops the Harness server together with the desktop application.
-- Opens conversation files in VS Code, Cursor, VSCodium, or Zed, and exposes native menu actions for the active workspace.
+- Opens conversation files in VS Code, Cursor, VSCodium, or Zed, with workspace actions in the sidebar, session header, and native menu.
 - Keeps Electron's Node integration disabled and blocks untrusted in-app navigation.
 - Includes native installers and portable packages built by GitHub Actions.
 - Supports both Intel and Apple Silicon macOS systems.
@@ -55,7 +55,7 @@ chmod +x DSH-Desktop-*.AppImage
 
 See the upstream [Web UI guide](https://deepseek-harness.github.io/deepseek-harness/guide/quickstart) for the Harness workflow.
 
-Clicking a code or text file in a conversation opens it in the detected editor. HTML, images, PDFs, and directories continue to use their system-default application. Select VS Code, Cursor, VSCodium, or Zed through **Workspace → Preferred Editor**, or open the current workspace with **Workspace → Open Workspace in Editor**. Files fall back to the system-default application when no supported editor is detected.
+Clicking a code or text file in a conversation opens it in the detected editor. HTML, images, PDFs, and directories continue to use their system-default application. Each workspace's sidebar **…** menu offers **Open in Editor** and **Open Folder**; the VS Code icon in the session header also opens the current workspace in the preferred editor. Select VS Code, Cursor, VSCodium, or Zed through the native **Workspace → Preferred Editor** menu. Files fall back to the system-default application when no supported editor is detected; an explicit editor action reports an error instead.
 
 The **View → Restart Harness** command restarts the local service. Diagnostic output is available through **Help → Open Logs Folder**.
 

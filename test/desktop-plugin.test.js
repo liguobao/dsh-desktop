@@ -6,6 +6,8 @@ import vm from 'node:vm'
 const packageUrl = new URL('../src/plugins/dsh-desktop-integration/package.json', import.meta.url)
 const clientUrl = new URL('../src/plugins/dsh-desktop-integration/lib/client.js', import.meta.url)
 const overlayUrl = new URL('../src/dsh-desktop.patch.yml', import.meta.url)
+const preloadUrl = new URL('../src/preload.cjs', import.meta.url)
+const mainUrl = new URL('../src/main.js', import.meta.url)
 
 test('desktop adapter is a standalone dual-face DSH client package', () => {
   const manifest = JSON.parse(readFileSync(packageUrl, 'utf8'))
@@ -13,7 +15,12 @@ test('desktop adapter is a standalone dual-face DSH client package', () => {
   assert.equal(manifest.main, 'lib/index.js')
   assert.equal(manifest.exports['./client'], './lib/client.js')
   assert.equal(manifest.dsh.client.platform, 'web')
-  assert.deepEqual(manifest.dsh.client.inject, ['@deepseek-ai/dsh-client-runtime'])
+  assert.deepEqual(manifest.dsh.client.inject, [
+    '@deepseek-ai/dsh-client-runtime',
+    '@deepseek-ai/dsh-client-locale',
+    '@deepseek-ai/dsh-client-ui-conversation',
+    '@deepseek-ai/dsh-client-ui-workspace',
+  ])
 })
 
 test('desktop overlay adds only the adapter plugin', () => {
@@ -23,12 +30,29 @@ test('desktop overlay adds only the adapter plugin', () => {
   assert.doesNotMatch(overlay, /id:\s+(?:api-gateway|ui-conversation|ui-workspace)\b/)
 })
 
-test('client adapter delegates existing openPath calls and publishes workspace context', () => {
+test('client adapter exposes native actions without spawning local processes', () => {
   const source = readFileSync(clientUrl, 'utf8')
   assert.match(source, /workspaces\.openPath = openPath/)
-  assert.match(source, /bridge\.openPath\(path\)/)
+  assert.match(source, /bridge\.openPath\(path, 'auto'\)/)
   assert.match(source, /bridge\.publishWorkspaceContext/)
+  assert.match(source, /conversation\.session\.header\.utilities/)
+  assert.match(source, /id: 'dsh-desktop-workspace-editor'/)
+  assert.match(source, /order: -10/)
+  assert.match(source, /installWorkspaceMenuActions/)
+  assert.match(source, /'editor', pendingPath, 'editor'/)
+  assert.match(source, /'fileManager', pendingPath, 'default'/)
+  assert.match(source, /用编辑器打开/)
+  assert.match(source, /打开文件夹/)
+  assert.match(source, /Open Folder/)
   assert.doesNotMatch(source, /child_process|exec\(|spawn\(/)
+})
+
+test('preload and main process pass only recognized native open intents', () => {
+  const preload = readFileSync(preloadUrl, 'utf8')
+  const main = readFileSync(mainUrl, 'utf8')
+  assert.match(preload, /openPath: \(path, intent = 'auto'\)/)
+  assert.match(main, /\['auto', 'editor', 'default'\]\.includes\(intent\)/)
+  assert.match(main, /openDesktopPath\(path, intent\)/)
 })
 
 test('client adapter replaces and restores the Harness path action at runtime', async () => {
@@ -37,8 +61,8 @@ test('client adapter replaces and restores the Harness path action at runtime', 
   const opened = []
   const published = []
   const bridge = {
-    openPath: async path => {
-      opened.push(path)
+    openPath: async (path, intent) => {
+      opened.push({ path, intent })
       return { ok: true }
     },
     publishWorkspaceContext: value => published.push(value),
@@ -51,8 +75,11 @@ test('client adapter replaces and restores the Harness path action at runtime', 
   vm.runInContext(source, context)
 
   assert.equal(registration.id, '@dsh-desktop/integration')
-  const plugin = registration.factory()
-  assert.deepEqual(Array.from(plugin.inject), ['sessions', 'workspaces'])
+  const plugin = registration.factory((specifier) => {
+    assert.equal(specifier, 'react')
+    return {}
+  })
+  assert.deepEqual(Array.from(plugin.inject), ['sessions', 'workspaces', 'slots', 'locale'])
 
   const subscribers = []
   const originalOpenPath = async () => { throw new Error('unexpected fallback') }
@@ -83,23 +110,45 @@ test('client adapter replaces and restores the Harness path action at runtime', 
       },
     },
   }
-  let dispose
+  const effects = []
+  let headerEntry
   plugin.apply({
     sessions,
     workspaces,
-    effect: callback => { dispose = callback() },
+    locale: {
+      register: () => () => {},
+      bind: () => key => key,
+    },
+    slots: {
+      inject: (name, callback) => {
+        assert.equal(name, 'conversation.session.header.utilities')
+        return callback()
+      },
+      register: (entry, component) => {
+        headerEntry = { entry, component }
+        return () => {}
+      },
+    },
+    effect: callback => {
+      const dispose = callback()
+      if (typeof dispose === 'function') effects.push(dispose)
+    },
   })
 
   assert.notEqual(workspaces.openPath, originalOpenPath)
   await workspaces.openPath('/workspace/src/main.js')
-  assert.deepEqual(opened, ['/workspace/src/main.js'])
+  assert.deepEqual(opened, [{ path: '/workspace/src/main.js', intent: 'auto' }])
   assert.deepEqual(JSON.parse(JSON.stringify(published)), [{ active: '/workspace', roots: ['/workspace'] }])
   assert.equal(subscribers.length, 2)
+  assert.equal(headerEntry.entry.id, 'dsh-desktop-workspace-editor')
+  assert.equal(headerEntry.entry.order, -10)
+  await headerEntry.entry.inject().openWorkspace('session-1')
+  assert.deepEqual(opened.at(-1), { path: '/workspace', intent: 'editor' })
 
   sessionSnapshot.current = undefined
   subscribers[0]()
   assert.deepEqual(JSON.parse(JSON.stringify(published.at(-1))), { active: '/workspace', roots: ['/workspace'] })
 
-  dispose()
+  for (const dispose of effects.reverse()) dispose()
   assert.equal(workspaces.openPath, originalOpenPath)
 })
