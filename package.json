@@ -14,7 +14,6 @@
     "node": ">=22"
   },
   "scripts": {
-    "postinstall": "electron-builder install-app-deps",
     "start": "electron .",
     "test": "node --test",
     "check": "node --check src/main.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/parent-watch.cjs",
@@ -54,6 +53,7 @@
     "productName": "DSH Desktop",
     "artifactName": "DSH-Desktop-${version}-${os}-${arch}.${ext}",
     "asar": false,
+    "npmRebuild": false,
     "files": [
       "src/**/*",
       "assets/**/*",
