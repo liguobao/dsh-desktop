@@ -18,9 +18,9 @@
     "test": "node --test",
     "check": "node --check src/main.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/parent-watch.cjs",
     "dist": "electron-builder --publish never",
-    "dist:linux": "electron-builder --linux AppImage deb --publish never",
-    "dist:mac": "electron-builder --mac dmg zip --publish never",
-    "dist:windows": "electron-builder --win nsis portable --publish never"
+    "dist:linux": "electron-builder --linux AppImage --publish never",
+    "dist:mac": "electron-builder --mac dmg --publish never",
+    "dist:windows": "electron-builder --win nsis --publish never"
   },
   "dependencies": {
     "@deepseek-ai/cordis-plugin-group": "1.0.1",
@@ -51,7 +51,6 @@
   "build": {
     "appId": "io.github.dshdesktop.app",
     "productName": "DSH Desktop",
-    "artifactName": "DSH-Desktop-${version}-${os}-${arch}.${ext}",
     "asar": false,
     "npmRebuild": false,
     "files": [
@@ -68,29 +67,25 @@
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.png",
       "target": [
-        "dmg",
-        "zip"
+        "dmg"
       ]
     },
     "dmg": {
+      "artifactName": "DSH-Desktop-v${version}-macos-${arch}.${ext}",
       "sign": false
     },
     "win": {
       "icon": "build/icon.ico",
       "target": [
-        "nsis",
-        "portable"
+        "nsis"
       ]
     },
     "nsis": {
-      "artifactName": "DSH-Desktop-${version}-windows-${arch}-setup.${ext}",
+      "artifactName": "DSH-Desktop-v${version}-windows-${arch}-setup.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true
-    },
-    "portable": {
-      "artifactName": "DSH-Desktop-${version}-windows-${arch}-portable.${ext}"
     },
     "linux": {
       "icon": "build/icon.png",
@@ -98,9 +93,11 @@
       "executableName": "dsh-desktop",
       "maintainer": "DSH Desktop Contributors <liguobao@users.noreply.github.com>",
       "target": [
-        "AppImage",
-        "deb"
+        "AppImage"
       ]
+    },
+    "appImage": {
+      "artifactName": "DSH-Desktop-v${version}-linux-x64.${ext}"
     }
   }
 }
