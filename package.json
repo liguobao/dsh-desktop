@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Community desktop wrapper for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "src/main.js",
