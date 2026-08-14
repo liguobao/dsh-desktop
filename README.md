@@ -12,7 +12,7 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 - Uses a random free loopback port instead of assuming port `3080` is available.
 - Shows immediate, stage-based startup progress while the local Harness becomes ready.
 - Starts and stops the Harness server together with the desktop application.
-- Manages web-profile plugins from npm or pinned GitHub revisions, plus user-owned Harness Skills, from a dedicated desktop page.
+- Manages web-profile plugins from npm or pinned GitHub revisions, plus Skills-based user extensions, in separate desktop windows.
 - Opens conversation files in VS Code, Cursor, VSCodium, or Zed, with workspace actions in the sidebar, session header, and native menu.
 - Keeps Electron's Node integration disabled and blocks untrusted in-app navigation.
 - Includes native installers and portable packages built by GitHub Actions.
@@ -58,11 +58,11 @@ See the upstream [Web UI guide](https://deepseek-harness.github.io/deepseek-harn
 
 Clicking a code or text file in a conversation opens it in the detected editor. HTML, images, PDFs, and directories continue to use their system-default application. Each workspace's sidebar **…** menu offers **Open in Editor** and **Open Folder**; the VS Code icon in the session header also opens the current workspace in the preferred editor. Select VS Code, Cursor, VSCodium, or Zed through the native **Workspace → Preferred Editor** menu. Files fall back to the system-default application when no supported editor is detected; an explicit editor action reports an error instead.
 
-Open **Extensions → Manage Plugins & Skills…** from the menu at the top of the window. The **Plugins** tab manages the `web` profile. It accepts an npm registry package such as `@scope/dsh-plugin` or `package@version`, and a public GitHub source in either `github:owner/repository#tag-or-commit` or `https://github.com/owner/repository.git#tag-or-commit` form. A GitHub revision is mandatory, and DSH Desktop saves the commit resolved by pnpm so later installs remain repeatable; GitHub installation also requires `git` to be available on `PATH`. Installed DSH bundles can be enabled, disabled, or uninstalled, while system bundles remain read-only. Restart Harness from the page when prompted. pnpm is bundled with the app.
+The **Extensions** menu at the top of the window provides separate **Manage Plugins…** and **Manage Extensions…** commands. Each opens its own window, and both windows can remain open together. The plugin window manages the `web` profile. It accepts an npm registry package such as `@scope/dsh-plugin` or `package@version`, and a public GitHub source in either `github:owner/repository#tag-or-commit` or `https://github.com/owner/repository.git#tag-or-commit` form. A GitHub revision is mandatory, and DSH Desktop saves the commit resolved by pnpm so later installs remain repeatable; GitHub installation also requires `git` to be available on `PATH`. Installed DSH bundles can be enabled, disabled, or uninstalled, while system bundles remain read-only. Restart Harness from the page when prompted. pnpm is bundled with the app.
 
 GitHub dependency scripts are suppressed during the initial inspection install. If a repository needs install or build scripts, the page offers an explicit opt-in; review the exact pinned revision before enabling it. Plugins execute local code with the same operating-system permissions as Harness. DSH Desktop cannot establish that a third-party package is safe—review the publisher, source, and dependency tree before installing it.
 
-The **Skills** tab manages the official `$DSH_HOME/skills` user directory. It can create a valid `SKILL.md` template, import a local folder containing `SKILL.md` and its resources, reveal an entry in the file manager, enable or disable it, and move it to the system Trash. Imported folders are validated against the Harness frontmatter format; symbolic links and oversized imports are rejected. Disabling a Skill moves it to DSH Desktop's `$DSH_HOME/.disabled-skills` holding directory. Harness watches the active directory, so Skill changes do not require a restart.
+The extension window manages the official `$DSH_HOME/skills` user directory. It can create a valid `SKILL.md` template, import a local folder containing `SKILL.md` and its resources, reveal an entry in the file manager, enable or disable it, and move it to the system Trash. Imported folders are validated against the Harness frontmatter format; symbolic links and oversized imports are rejected. Disabling an extension moves it to DSH Desktop's `$DSH_HOME/.disabled-skills` holding directory. Harness watches the active directory, so extension changes do not require a restart.
 
 The **View → Restart Harness** command restarts the local service. Diagnostic output is available through **Help → Open Logs Folder**.
 
@@ -78,8 +78,9 @@ DSH Desktop
 │     └─ @deepseek-ai/dsh web --patch <desktop-adapter> --port 0
 ├─ sandboxed Harness window
 │  └─ http://127.0.0.1:<assigned-port>
+├─ sandboxed local plugin-manager window
+│  └─ $DSH_HOME/profiles/web/package.json
 └─ sandboxed local extension-manager window
-   ├─ $DSH_HOME/profiles/web/package.json
    └─ $DSH_HOME/skills
 ```
 
@@ -130,7 +131,7 @@ The workflow intentionally does not contain signing identities. Maintainers can 
 
 DeepSeek Harness is an agent harness that can read and modify selected workspace files and execute commands with the permissions you grant. Review the active workspace, model provider, and permission prompts before starting a task.
 
-The HTTP server binds only to `127.0.0.1`. Renderers have no Node.js access and cannot navigate outside their assigned origin or local page. The Harness preload accepts only workspace-scope and authorized path-opening messages from the exact Harness origin. The separate extension-manager preload is accepted only from its exact local page and exposes fixed plugin and Skill operations; package-manager commands use argument arrays rather than a shell. Skill mutations are restricted to direct entries in the two app-managed roots, and imports reject symbolic links. The main process rejects paths and symlink escapes outside registered workspaces. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+The HTTP server binds only to `127.0.0.1`. Renderers have no Node.js access and cannot navigate outside their assigned origin or local page. The Harness preload accepts only workspace-scope and authorized path-opening messages from the exact Harness origin. Plugin and extension windows use different preloads and exact local-page checks, exposing only their respective fixed plugin or Skill operations; package-manager commands use argument arrays rather than a shell. Skill mutations are restricted to direct entries in the two app-managed roots, and imports reject symbolic links. The main process rejects paths and symlink escapes outside registered workspaces. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## Project status and trademarks
 
