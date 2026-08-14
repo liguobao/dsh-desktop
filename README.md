@@ -28,6 +28,12 @@ Download the latest package from [GitHub Releases](https://github.com/liguobao/d
 
 The community CI builds are currently unsigned. Windows SmartScreen and macOS Gatekeeper may therefore show a warning. Review the release source and workflow before choosing to continue. On macOS, prefer the standard **Control-click → Open** flow instead of disabling Gatekeeper globally.
 
+If macOS still reports that the app is damaged or cannot verify its developer, first move it to `/Applications` and confirm that the package came from this repository's GitHub Release. Then open Terminal and remove the quarantine attribute from DSH Desktop only:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/DSH Desktop.app"
+```
+
 For an AppImage:
 
 ```bash

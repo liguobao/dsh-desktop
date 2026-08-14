@@ -28,6 +28,12 @@
 
 当前社区 CI 构建尚未进行商业代码签名，因此 Windows SmartScreen 或 macOS Gatekeeper 可能显示警告。继续运行前建议检查 Release 对应的源码与构建工作流。macOS 请优先使用标准的**按住 Control 点击 → 打开**方式，不要在系统范围关闭 Gatekeeper。
 
+如果 macOS 仍提示应用已损坏或无法验证开发者，请先将应用拖到 `/Applications`，确认安装包来自本仓库的 GitHub Release，然后在“终端”中仅为 DSH Desktop 清除隔离属性：
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/DSH Desktop.app"
+```
+
 运行 AppImage：
 
 ```bash
