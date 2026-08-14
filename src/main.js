@@ -66,10 +66,10 @@ function setLocale(locale) {
       noEditor: '未检测到受支持的编辑器',
       nativeOpenFailed: '无法打开本地路径',
       extensions: '扩展',
-      managePlugins: '管理插件…',
-      manageExtensions: '管理扩展…',
+      managePlugins: '插件',
+      manageExtensions: 'Skills',
       pluginManager: 'DSH 插件管理',
-      extensionManager: 'DSH 扩展管理',
+      extensionManager: 'DSH Skills',
     } : {
       preparing: 'Preparing the desktop window…',
       loading: 'Starting DeepSeek Harness…',
@@ -95,10 +95,10 @@ function setLocale(locale) {
       noEditor: 'No supported editor detected',
       nativeOpenFailed: 'Could Not Open Local Path',
       extensions: 'Extensions',
-      managePlugins: 'Manage Plugins…',
-      manageExtensions: 'Manage Extensions…',
+      managePlugins: 'Plugins',
+      manageExtensions: 'Skills',
       pluginManager: 'DSH Plugin Manager',
-      extensionManager: 'DSH Extension Manager',
+      extensionManager: 'DSH Skills',
     }
 }
 

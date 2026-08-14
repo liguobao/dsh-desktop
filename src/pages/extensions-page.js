@@ -2,27 +2,27 @@
   const api = window.dshExtensionManager
   const { actionButton, errorText, setFeedback, textElement, toggleButton, zh } = window.dshManagerUi
   const strings = zh ? {
-    documentTitle: 'DSH 扩展', appTitle: '扩展', surfaceLabel: 'Skill 扩展', refresh: '刷新', docs: '文档',
-    pageTitle: '管理 Harness 扩展', pageIntro: '创建、导入和管理 Harness Skills。',
-    trust: '扩展可以包含引导 Harness 使用工具的指令和资源，启用导入内容前请先检查文件。', importExtension: '导入扩展文件夹…', openExtensions: '打开扩展目录',
-    createLabel: '创建扩展模板', namePlaceholder: 'extension-name', descriptionPlaceholder: 'Harness 应在何时以及为何使用这个扩展',
+    documentTitle: 'DSH Skills', appTitle: 'Skills', surfaceLabel: 'Skills', refresh: '刷新', docs: '文档',
+    pageTitle: 'Harness Skills',
+    trust: 'Skills 会引导 Harness 使用工具，启用前请检查内容。', importExtension: '导入 Skill 文件夹…', openExtensions: '打开 Skills 目录',
+    createLabel: '创建 Skill 模板', namePlaceholder: 'skill-name', descriptionPlaceholder: 'Harness 应在何时使用这个 Skill',
     create: '创建', creating: '创建中…', createHint: '创建 ~/.dsh/skills/<name>/SKILL.md；Harness 会自动监听此目录。',
-    userExtensions: '用户扩展', empty: '尚无用户扩展。可以新建模板，或导入包含 SKILL.md 的文件夹。', count: count => `${count} 个用户扩展`, managed: '管理目录', loading: '正在加载…',
+    userExtensions: '用户 Skills', empty: '尚无用户 Skills。', count: count => `${count} 个用户 Skill`, managed: '管理目录', loading: '正在加载…',
     active: '已启用', inactive: '已停用', invalid: '格式无效', show: '定位', moveTrash: '移到废纸篓', enable: '启用', disable: '停用',
-    confirmRemove: name => `把 ${name} 移到系统废纸篓吗？`, imported: '扩展已导入并启用。', created: '扩展模板已创建并启用。',
-    changed: '扩展状态已更新，Harness 会自动检测变化。', removed: '扩展已移到系统废纸篓。', modelAndUser: '模型与用户均可调用', userOnly: '仅用户可调用', modelOnly: '仅模型可调用', notInvocable: '不可调用',
-    unavailable: '扩展管理桥接不可用，请重新启动 DSH Desktop。', unavailableSummary: '不可用', unknownError: '扩展操作失败。',
+    confirmRemove: name => `把 ${name} 移到系统废纸篓吗？`, imported: 'Skill 已导入并启用。', created: 'Skill 模板已创建并启用。',
+    changed: 'Skill 状态已更新。', removed: 'Skill 已移到系统废纸篓。', modelAndUser: '模型与用户均可调用', userOnly: '仅用户可调用', modelOnly: '仅模型可调用', notInvocable: '不可调用',
+    unavailable: 'Skills 桥接不可用，请重新启动 DSH Desktop。', unavailableSummary: '不可用', unknownError: 'Skill 操作失败。',
   } : {
-    documentTitle: 'DSH Extensions', appTitle: 'Extensions', surfaceLabel: 'Skills', refresh: 'Refresh', docs: 'Documentation',
-    pageTitle: 'Manage Harness extensions', pageIntro: 'Create, import, and manage Harness Skills.',
-    trust: 'Extensions can contain instructions and resources that guide Harness tool use. Review imported files before enabling them.', importExtension: 'Import extension folder…', openExtensions: 'Open extensions folder',
-    createLabel: 'Create an extension template', namePlaceholder: 'extension-name', descriptionPlaceholder: 'When and why Harness should use this extension',
+    documentTitle: 'DSH Skills', appTitle: 'Skills', surfaceLabel: 'Skills', refresh: 'Refresh', docs: 'Documentation',
+    pageTitle: 'Harness Skills',
+    trust: 'Skills can guide Harness tool use. Review them before enabling.', importExtension: 'Import Skill folder…', openExtensions: 'Open Skills folder',
+    createLabel: 'Create a Skill template', namePlaceholder: 'skill-name', descriptionPlaceholder: 'When Harness should use this Skill',
     create: 'Create', creating: 'Creating…', createHint: 'Creates ~/.dsh/skills/<name>/SKILL.md. Harness watches this directory automatically.',
-    userExtensions: 'User extensions', empty: 'No user extensions are installed. Create one or import a folder containing SKILL.md.', count: count => `${count} user extension${count === 1 ? '' : 's'}`, managed: 'Managed in', loading: 'Loading…',
+    userExtensions: 'User Skills', empty: 'No user Skills are installed.', count: count => `${count} user Skill${count === 1 ? '' : 's'}`, managed: 'Managed in', loading: 'Loading…',
     active: 'Enabled', inactive: 'Disabled', invalid: 'Invalid format', show: 'Show', moveTrash: 'Move to Trash', enable: 'Enable', disable: 'Disable',
-    confirmRemove: name => `Move ${name} to the system Trash?`, imported: 'Extension imported and enabled.', created: 'Extension template created and enabled.',
-    changed: 'Extension status updated. Harness detects the change automatically.', removed: 'Extension moved to the system Trash.', modelAndUser: 'Model and user invocable', userOnly: 'User invocable only', modelOnly: 'Model invocable only', notInvocable: 'Not invocable',
-    unavailable: 'The extension manager bridge is unavailable. Restart DSH Desktop.', unavailableSummary: 'Unavailable', unknownError: 'Extension operation failed.',
+    confirmRemove: name => `Move ${name} to the system Trash?`, imported: 'Skill imported and enabled.', created: 'Skill template created and enabled.',
+    changed: 'Skill status updated.', removed: 'Skill moved to the system Trash.', modelAndUser: 'Model and user invocable', userOnly: 'User invocable only', modelOnly: 'Model invocable only', notInvocable: 'Not invocable',
+    unavailable: 'The Skills bridge is unavailable. Restart DSH Desktop.', unavailableSummary: 'Unavailable', unknownError: 'Skill operation failed.',
   }
 
   const elements = {
@@ -46,7 +46,6 @@
     document.querySelector('#refresh').textContent = strings.refresh
     document.querySelector('#docs').textContent = strings.docs
     document.querySelector('#page-title').textContent = strings.pageTitle
-    document.querySelector('#page-intro').textContent = strings.pageIntro
     document.querySelector('#extension-trust').textContent = strings.trust
     document.querySelector('#extension-import').textContent = strings.importExtension
     document.querySelector('#extensions-open-root').textContent = strings.openExtensions

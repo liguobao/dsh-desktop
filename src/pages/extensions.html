@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'">
-    <title>DSH Extensions</title>
+    <title>DSH Skills</title>
     <link rel="stylesheet" href="manager.css">
     <script src="manager-ui.js" defer></script>
     <script src="extensions-page.js" defer></script>
@@ -13,7 +13,7 @@
     <header class="topbar">
       <div class="brand">
         <img src="../../assets/icon.png" alt="">
-        <div><h1 id="app-title">Extensions</h1><p>DSH Desktop · <span id="surface-label">Skills</span></p></div>
+        <div><h1 id="app-title">Skills</h1><p>DSH Desktop · <span id="surface-label">Skills</span></p></div>
       </div>
       <div class="top-actions">
         <button class="text-button" id="refresh" type="button">Refresh</button>
@@ -23,34 +23,33 @@
     <main>
       <section class="intro" aria-labelledby="page-title">
         <div class="intro-copy">
-          <h2 id="page-title">Manage Harness extensions</h2>
-          <p id="page-intro">Create, import, and manage Harness Skills.</p>
+          <h2 id="page-title">Harness Skills</h2>
         </div>
         <div class="summary" id="extension-summary" aria-live="polite">Loading…</div>
       </section>
-      <div class="notice" id="extension-trust">Extensions can contain instructions and resources that guide Harness tool use. Review imported files before enabling them.</div>
+      <div class="notice" id="extension-trust">Skills can guide Harness tool use. Review them before enabling.</div>
       <div class="action-row">
-        <button class="button" id="extension-import" type="button">Import extension folder…</button>
-        <button class="button" id="extensions-open-root" type="button">Open extensions folder</button>
+        <button class="button" id="extension-import" type="button">Import Skill folder…</button>
+        <button class="button" id="extensions-open-root" type="button">Open Skills folder</button>
       </div>
       <form class="form-block" id="extension-create-form">
-        <label for="extension-name" id="extension-create-label">Create an extension template</label>
+        <label for="extension-name" id="extension-create-label">Create a Skill template</label>
         <div class="extension-fields">
-          <input id="extension-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="extension-name" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*">
-          <input id="extension-description" type="text" maxlength="500" autocomplete="off" placeholder="When and why Harness should use this extension" required>
+          <input id="extension-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="skill-name" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*">
+          <input id="extension-description" type="text" maxlength="500" autocomplete="off" placeholder="When Harness should use this Skill" required>
           <button class="button button--primary" id="extension-create" type="submit">Create</button>
         </div>
         <p class="form-hint" id="extension-create-hint">Creates ~/.dsh/skills/&lt;name&gt;/SKILL.md. Harness watches this directory automatically.</p>
       </form>
       <div class="feedback" id="extension-feedback" role="status" aria-live="polite"></div>
       <section class="section" aria-labelledby="extensions-heading">
-        <div class="section-head"><h3 id="extensions-heading">User extensions</h3><p class="section-note" id="extensions-note">Managed in ~/.dsh/skills</p></div>
-        <div class="skeleton" id="extensions-loading" aria-label="Loading extensions">
+        <div class="section-head"><h3 id="extensions-heading">User Skills</h3><p class="section-note" id="extensions-note">Managed in ~/.dsh/skills</p></div>
+        <div class="skeleton" id="extensions-loading" aria-label="Loading Skills">
           <div class="skeleton-row"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
           <div class="skeleton-row"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
         </div>
         <div class="item-list" id="extensions-list" hidden></div>
-        <div class="empty" id="extensions-empty" hidden>No user extensions are installed. Create one or import a folder containing SKILL.md.</div>
+        <div class="empty" id="extensions-empty" hidden>No user Skills are installed.</div>
       </section>
     </main>
   </body>

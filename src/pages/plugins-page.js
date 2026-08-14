@@ -3,7 +3,7 @@
   const { actionButton, errorText, setFeedback, textElement, toggleButton, zh } = window.dshManagerUi
   const strings = zh ? {
     documentTitle: 'DSH 插件', appTitle: '插件', refresh: '刷新', docs: '文档',
-    pageTitle: '管理 Harness 插件', pageIntro: '安装和管理 Harness 插件。',
+    pageTitle: 'Harness 插件',
     trust: '插件会在本机以 Harness 的相同权限运行，请只安装你信任的代码。', installLabel: '从 npm 或 GitHub 安装',
     placeholder: '@scope/plugin@version 或 github:owner/repo#v1.0.0', install: '安装', installing: '安装中…',
     hint: 'GitHub 来源必须在 # 后指定 Tag 或 Commit；插件修改后需要重启 Harness。',
@@ -17,7 +17,7 @@
     unavailable: '插件管理桥接不可用，请重新启动 DSH Desktop。', unavailableSummary: '不可用', unknownError: '插件操作失败。',
   } : {
     documentTitle: 'DSH Plugins', appTitle: 'Plugins', refresh: 'Refresh', docs: 'Documentation',
-    pageTitle: 'Manage Harness plugins', pageIntro: 'Install and manage Harness plugins.',
+    pageTitle: 'Harness Plugins',
     trust: 'Plugins run locally with the same permissions as Harness. Install only code you trust.', installLabel: 'Install from npm or GitHub',
     placeholder: '@scope/plugin@version or github:owner/repo#v1.0.0', install: 'Install', installing: 'Installing…',
     hint: 'GitHub sources must specify a tag or commit after #. Plugin changes require a Harness restart.',
@@ -57,7 +57,6 @@
     document.querySelector('#refresh').textContent = strings.refresh
     document.querySelector('#docs').textContent = strings.docs
     document.querySelector('#page-title').textContent = strings.pageTitle
-    document.querySelector('#page-intro').textContent = strings.pageIntro
     document.querySelector('#plugin-trust').textContent = strings.trust
     document.querySelector('#plugin-install-label').textContent = strings.installLabel
     elements.spec.placeholder = strings.placeholder

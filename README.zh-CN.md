@@ -58,7 +58,7 @@ Harness 的具体使用方式可参考上游 [Web UI 指南](https://deepseek-ha
 
 对话里点击代码或文本文件时，桌面适配插件会使用检测到的编辑器打开；HTML、图片、PDF 和目录仍交给系统默认程序。侧栏中每个工作区的 **…** 菜单提供**用编辑器打开**和**打开文件夹**，会话标题栏的 VS Code 图标也会在首选编辑器中打开当前工作区。还可以通过原生菜单的**工作区 → 首选编辑器**选择 VS Code、Cursor、VSCodium 或 Zed。未检测到支持的编辑器时，文件会回退到系统默认程序；显式使用编辑器打开时会显示错误提示。
 
-窗口最上方的**扩展**菜单提供**管理插件…**和**管理扩展…**两个选项，分别打开可以同时使用的独立窗口。插件窗口管理 `web` profile，既可以输入 `@scope/dsh-plugin`、`package@version` 这样的 npm Registry 包名，也支持 `github:owner/repository#tag-or-commit` 或 `https://github.com/owner/repository.git#tag-or-commit` 格式的公开 GitHub 仓库。GitHub 来源必须指定 Tag 或 Commit，DSH Desktop 会保存 pnpm 最终解析出的 Commit，以便复现安装结果；系统还需要能从 `PATH` 找到 `git`。已经安装且声明了 DSH bundle 的插件可以启用、停用或卸载，系统 Bundle 只读展示。修改后按照页面提示重启 Harness 即可生效。pnpm 已内置到应用中。
+窗口最上方的**扩展**菜单提供**插件**和 **Skills** 两个选项，分别打开可以同时使用的独立窗口。插件窗口管理 `web` profile，既可以输入 `@scope/dsh-plugin`、`package@version` 这样的 npm Registry 包名，也支持 `github:owner/repository#tag-or-commit` 或 `https://github.com/owner/repository.git#tag-or-commit` 格式的公开 GitHub 仓库。GitHub 来源必须指定 Tag 或 Commit，DSH Desktop 会保存 pnpm 最终解析出的 Commit，以便复现安装结果；系统还需要能从 `PATH` 找到 `git`。已经安装且声明了 DSH bundle 的插件可以启用、停用或卸载，系统 Bundle 只读展示。修改后按照页面提示重启 Harness 即可生效。pnpm 已内置到应用中。
 
 GitHub 依赖在首次检查安装时默认禁止运行脚本。如果仓库确实需要安装或构建脚本，页面会提供明确的授权选项；勾选前请检查固定版本对应的源码。插件会在本机以 Harness 相同的操作系统权限执行代码。DSH Desktop 无法替第三方软件包提供安全背书，安装前请检查发布者、源码和依赖树。
 
