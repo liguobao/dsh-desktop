@@ -16,7 +16,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/parent-watch.cjs",
+    "check": "node --check src/main.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/startup-progress.js && node --check src/parent-watch.cjs",
     "dist": "electron-builder --publish never",
     "dist:linux": "electron-builder --linux AppImage --publish never",
     "dist:mac": "electron-builder --mac dmg --publish never",

@@ -10,6 +10,7 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 
 - No separate Node.js, npm, or `npx` installation is required for release builds.
 - Uses a random free loopback port instead of assuming port `3080` is available.
+- Shows immediate, stage-based startup progress while the local Harness becomes ready.
 - Starts and stops the Harness server together with the desktop application.
 - Keeps Electron's Node integration disabled and blocks untrusted in-app navigation.
 - Includes native installers and portable packages built by GitHub Actions.

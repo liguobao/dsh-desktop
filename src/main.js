@@ -6,6 +6,7 @@ import process from 'node:process'
 import { app, BrowserWindow, Menu, dialog, shell } from 'electron'
 import { HarnessServer } from './harness-server.js'
 import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
+import { loadingStateScript, normalizeProgress } from './startup-progress.js'
 
 const require = createRequire(import.meta.url)
 let isChinese = false
@@ -14,7 +15,11 @@ let copy
 function setLocale(locale) {
   isChinese = locale.toLowerCase().startsWith('zh')
   copy = isChinese ? {
+      preparing: '正在准备桌面窗口…',
       loading: '正在启动 DeepSeek Harness…',
+      loadingServices: '正在加载本地服务…',
+      openingWorkspace: '正在打开工作区…',
+      ready: '准备就绪',
       restarting: '正在重启 DeepSeek Harness…',
       startupFailed: 'DeepSeek Harness 启动失败',
       stopped: 'DeepSeek Harness 已停止',
@@ -27,7 +32,11 @@ function setLocale(locale) {
       zoomOut: '缩小',
       window: '窗口',
     } : {
+      preparing: 'Preparing the desktop window…',
       loading: 'Starting DeepSeek Harness…',
+      loadingServices: 'Loading local services…',
+      openingWorkspace: 'Opening the workspace…',
+      ready: 'Ready',
       restarting: 'Restarting DeepSeek Harness…',
       startupFailed: 'DeepSeek Harness failed to start',
       stopped: 'DeepSeek Harness stopped',
@@ -45,10 +54,12 @@ function setLocale(locale) {
 setLocale('en')
 
 let mainWindow
+let splashWindow
 let server
 let harnessOrigin
 let quitting = false
 let restartGeneration = 0
+let loadingProgress = 0
 let logStream
 let logPath
 
@@ -79,12 +90,43 @@ function isDesktopPage(url) {
   }
 }
 
-async function showLoading(message = copy.loading) {
-  if (mainWindow?.isDestroyed() !== false) return
+function currentLoadingWindow() {
+  if (splashWindow?.isDestroyed() === false) return splashWindow
+  if (mainWindow?.isDestroyed() === false) return mainWindow
+  return undefined
+}
+
+async function showLoading(message = copy.preparing, progress = 8, generation = restartGeneration) {
+  const window = currentLoadingWindow()
+  if (window === undefined) return
   harnessOrigin = undefined
-  await mainWindow.loadFile(pagePath('loading.html'), {
-    query: { lang: isChinese ? 'zh' : 'en', message },
+  await window.loadFile(pagePath('loading.html'), {
+    query: { lang: isChinese ? 'zh' : 'en', message, progress: String(progress) },
   })
+  if (generation !== restartGeneration || window.isDestroyed()) return
+  loadingProgress = normalizeProgress(progress)
+  if (!window.isVisible()) window.show()
+}
+
+async function updateLoading(message, progress, stage, generation = restartGeneration) {
+  const window = currentLoadingWindow()
+  const nextProgress = normalizeProgress(progress)
+  if (window === undefined || generation !== restartGeneration || nextProgress < loadingProgress) return
+  loadingProgress = nextProgress
+  writeLog('desktop', `Startup stage ${stage} (${String(nextProgress)}%).\n`)
+  try {
+    await window.webContents.executeJavaScript(loadingStateScript(message, nextProgress), true)
+  } catch (error) {
+    if (!window.isDestroyed()) writeLog('stderr', `Unable to update startup progress: ${String(error)}\n`)
+  }
+}
+
+function revealMainWindow() {
+  if (mainWindow?.isDestroyed() !== false) return
+  mainWindow.show()
+  const splash = splashWindow
+  splashWindow = undefined
+  if (splash?.isDestroyed() === false) splash.close()
 }
 
 async function showError(title, error) {
@@ -100,6 +142,7 @@ async function showError(title, error) {
       logs: logPath ?? '',
     },
   })
+  revealMainWindow()
 }
 
 function installNavigationPolicy(window) {
@@ -147,14 +190,43 @@ function createWindow() {
     },
   })
   installNavigationPolicy(window)
-  window.once('ready-to-show', () => window.show())
   window.on('closed', () => { mainWindow = undefined })
   return window
 }
 
-async function startHarness(message = copy.loading) {
+function createSplashWindow() {
+  const window = new BrowserWindow({
+    width: 520,
+    height: 420,
+    show: false,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    autoHideMenuBar: true,
+    title: 'DSH Desktop',
+    icon: join(import.meta.dirname, '..', 'assets', 'icon.png'),
+    backgroundColor: '#f4f7fc',
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+    },
+  })
+  window.on('closed', () => {
+    if (splashWindow === window) splashWindow = undefined
+    if (!quitting && mainWindow?.isVisible() !== true) app.quit()
+  })
+  return window
+}
+
+async function startHarness(message = copy.preparing) {
+  const startedAt = performance.now()
   const generation = ++restartGeneration
-  await showLoading(message)
+  await showLoading(message, 8, generation)
+  if (mainWindow === undefined) mainWindow = createWindow()
+  await updateLoading(copy.loading, 24, 'launching-harness', generation)
   if (server !== undefined) await server.stop()
   if (generation !== restartGeneration || quitting) return
 
@@ -182,7 +254,15 @@ async function startHarness(message = copy.loading) {
         FORCE_COLOR: '0',
         NO_COLOR: '1',
       },
-      onOutput: writeLog,
+      onOutput: (() => {
+        let receivedOutput = false
+        return (source, text) => {
+          writeLog(source, text)
+          if (receivedOutput) return
+          receivedOutput = true
+          void updateLoading(copy.loadingServices, 56, 'loading-services', generation)
+        }
+      })(),
     })
     server = nextServer
     nextServer.on('exit', ({ code, signal, ready }) => {
@@ -192,12 +272,17 @@ async function startHarness(message = copy.loading) {
       }
     })
     const url = await nextServer.start()
+    await updateLoading(copy.openingWorkspace, 82, 'harness-ready', generation)
     if (generation !== restartGeneration || quitting || mainWindow?.isDestroyed() !== false) {
       await nextServer.stop()
       return
     }
     harnessOrigin = new URL(url).origin
+    await updateLoading(copy.openingWorkspace, 92, 'loading-workspace', generation)
     await mainWindow.loadURL(url)
+    await updateLoading(copy.ready, 100, 'complete', generation)
+    writeLog('desktop', `Startup completed in ${String(Math.round(performance.now() - startedAt))} ms.\n`)
+    revealMainWindow()
   } catch (error) {
     if (generation === restartGeneration) {
       await server?.stop()
@@ -262,7 +347,7 @@ if (!hasLock) {
     logStream = createWriteStream(logPath, { flags: 'a' })
     writeLog('desktop', `DSH Desktop ${app.getVersion()} starting on ${process.platform}/${process.arch}.\n`)
     buildMenu()
-    mainWindow = createWindow()
+    splashWindow = createSplashWindow()
     void startHarness()
   }).catch((error) => {
     dialog.showErrorBox(copy.startupFailed, error instanceof Error ? error.stack ?? error.message : String(error))
@@ -271,7 +356,7 @@ if (!hasLock) {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createWindow()
+      splashWindow = createSplashWindow()
       void startHarness()
     }
   })
