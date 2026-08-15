@@ -8,7 +8,8 @@
     placeholder: '@scope/plugin@version 或 https://github.com/owner/repo', install: '安装', installing: '安装中…',
     hint: '支持 GitHub 仓库、Commit 和 Tree 地址；仓库地址优先安装最新 Tag，没有 Tag 时固定到默认分支当前 Commit。',
     buildLabel: '允许这个 GitHub 软件包运行安装和构建脚本；勾选前请先检查源码。', installed: '已安装插件', managed: '管理目录',
-    discover: '发现社区插件', discoverLoading: '正在加载在线目录…',
+    catalogEntryTitle: '在线插件', catalogEntryDescription: '浏览并搜索 GitHub 社区目录中的 DSH 插件。', catalogBrowse: '浏览目录 →', catalogBack: '← 返回插件管理',
+    discover: '在线插件', discoverLoading: '正在加载在线目录…',
     discoverHint: '目录来源于 GitHub dsh-plugin topic；安装前请先检查插件源码。',
     searchLabel: '搜索社区插件', searchPlaceholder: '按名称、描述或分类搜索',
     onlineCatalog: count => `在线目录 · ${count} 个`, offlineCatalog: count => `离线目录 · ${count} 个`,
@@ -28,7 +29,8 @@
     placeholder: '@scope/plugin@version or https://github.com/owner/repo', install: 'Install', installing: 'Installing…',
     hint: 'Supports GitHub repository, commit, and tree URLs. Repository URLs use the latest tag, or pin the current default-branch commit when no tag exists.',
     buildLabel: 'Allow this GitHub package to run install and build scripts. Review its source first.', installed: 'Installed plugins', managed: 'Managed in',
-    discover: 'Discover community plugins', discoverLoading: 'Loading online catalog…',
+    catalogEntryTitle: 'Online plugins', catalogEntryDescription: 'Browse and search DSH plugins from the GitHub community catalog.', catalogBrowse: 'Browse catalog →', catalogBack: '← Back to plugin manager',
+    discover: 'Online plugins', discoverLoading: 'Loading online catalog…',
     discoverHint: 'Cataloged from the GitHub dsh-plugin topic. Review a plugin\'s source before installing it.',
     searchLabel: 'Search community plugins', searchPlaceholder: 'Search by name, description, or category',
     onlineCatalog: count => `Online catalog · ${count}`, offlineCatalog: count => `Offline catalog · ${count}`,
@@ -57,6 +59,13 @@
     list: document.querySelector('#plugin-list'),
     empty: document.querySelector('#plugin-empty'),
     system: document.querySelector('#system-list'),
+    homeView: document.querySelector('#plugin-home-view'),
+    homeNotices: document.querySelector('#home-notices'),
+    catalogView: document.querySelector('#catalog-view'),
+    catalogNotices: document.querySelector('#catalog-notices'),
+    openCatalog: document.querySelector('#open-catalog'),
+    closeCatalog: document.querySelector('#close-catalog'),
+    catalogEntryNote: document.querySelector('#catalog-entry-note'),
     discoverNote: document.querySelector('#discover-note'),
     discoverHint: document.querySelector('#discover-hint'),
     discoverSearch: document.querySelector('#plugin-search'),
@@ -82,6 +91,10 @@
     elements.install.textContent = strings.install
     document.querySelector('#plugin-install-hint').textContent = strings.hint
     document.querySelector('#allow-build-label').textContent = strings.buildLabel
+    document.querySelector('#catalog-entry-title').textContent = strings.catalogEntryTitle
+    document.querySelector('#catalog-entry-description').textContent = strings.catalogEntryDescription
+    document.querySelector('#catalog-entry-action').textContent = strings.catalogBrowse
+    elements.closeCatalog.textContent = strings.catalogBack
     document.querySelector('#discover-heading').textContent = strings.discover
     elements.discoverNote.textContent = strings.discoverLoading
     elements.discoverHint.textContent = strings.discoverHint
@@ -96,6 +109,22 @@
     document.querySelector('#restart-text').textContent = strings.restartText
     elements.restart.textContent = strings.restart
     elements.summary.textContent = strings.loading
+  }
+
+  function showCatalog() {
+    setFeedback(elements.feedback)
+    elements.catalogNotices.append(elements.feedback, elements.restartBanner)
+    elements.homeView.hidden = true
+    elements.catalogView.hidden = false
+    elements.closeCatalog.focus()
+  }
+
+  function showHome() {
+    setFeedback(elements.feedback)
+    elements.homeNotices.append(elements.feedback, elements.restartBanner)
+    elements.catalogView.hidden = true
+    elements.homeView.hidden = false
+    elements.openCatalog.focus()
   }
 
   function setBusy(value, action = '') {
@@ -216,6 +245,7 @@
     const limit = query === '' ? 20 : 40
     const visible = matches.slice(0, limit)
     const source = discovery.online ? strings.onlineCatalog(discovery.plugins.length) : strings.offlineCatalog(discovery.plugins.length)
+    elements.catalogEntryNote.textContent = source
     elements.discoverNote.textContent = query === '' ? source : `${strings.resultCount(visible.length, matches.length)} · ${source}`
     elements.discoverList.replaceChildren(...visible.map(discoveryRow))
     elements.discoverList.hidden = visible.length === 0
@@ -235,20 +265,26 @@
   }
 
   async function load() {
+    elements.openCatalog.disabled = false
     if (!api) {
       elements.loading.hidden = true
       elements.summary.textContent = strings.unavailableSummary
+      elements.catalogEntryNote.textContent = strings.unavailableSummary
+      elements.openCatalog.disabled = true
       return setFeedback(elements.feedback, strings.unavailable, 'error')
     }
     elements.discoverLoading.hidden = false
     elements.discoverList.hidden = true
     elements.discoverEmpty.hidden = true
     elements.discoverSearch.disabled = true
+    elements.catalogEntryNote.textContent = strings.discoverLoading
     elements.discoverNote.textContent = strings.discoverLoading
     const [result, discoveryResult] = await Promise.all([api.list(), api.discover()])
     if (!result?.ok) {
       elements.loading.hidden = true
       elements.summary.textContent = strings.unavailableSummary
+      elements.catalogEntryNote.textContent = strings.unavailableSummary
+      elements.openCatalog.disabled = true
       return setFeedback(elements.feedback, errorText(result, strings.unknownError), 'error')
     }
     catalog = result.catalog
@@ -275,6 +311,7 @@
     if (catalog.buildScriptsIgnored) {
       elements.spec.value = spec
       elements.buildOption.hidden = false
+      if (!elements.catalogView.hidden) showHome()
       setFeedback(elements.feedback, strings.buildSkipped, 'error')
     } else {
       restartRequired = true
@@ -364,6 +401,11 @@
     if (!github) elements.allowBuild.checked = false
   })
   elements.discoverSearch.addEventListener('input', renderDiscovery)
+  elements.openCatalog.addEventListener('click', showCatalog)
+  elements.closeCatalog.addEventListener('click', showHome)
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !elements.catalogView.hidden && !busy) showHome()
+  })
   elements.restart.addEventListener('click', restart)
   document.querySelector('#refresh').addEventListener('click', () => void load())
   document.querySelector('#docs').addEventListener('click', () => void api?.openDocs())

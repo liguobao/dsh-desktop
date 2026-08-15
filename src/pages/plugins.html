@@ -21,56 +21,79 @@
       </div>
     </header>
     <main>
-      <section class="intro" aria-labelledby="page-title">
-        <div class="intro-copy">
-          <h2 id="page-title">Harness Plugins</h2>
-          <p class="intro-note" id="plugin-trust">Plugins run locally with the same permissions as Harness. Install only code you trust.</p>
+      <div id="plugin-home-view">
+        <section class="intro" aria-labelledby="page-title">
+          <div class="intro-copy">
+            <h2 id="page-title">Harness Plugins</h2>
+            <p class="intro-note" id="plugin-trust">Plugins run locally with the same permissions as Harness. Install only code you trust.</p>
+          </div>
+          <div class="summary" id="plugin-summary" aria-live="polite">Loading…</div>
+        </section>
+        <form class="form-block" id="plugin-install-form">
+          <label for="plugin-spec" id="plugin-install-label">Install from npm or GitHub</label>
+          <div class="form-row">
+            <input id="plugin-spec" name="plugin" type="text" maxlength="300" autocomplete="off" spellcheck="false" placeholder="@scope/plugin@version or https://github.com/owner/repo" required>
+            <button class="button button--primary" id="plugin-install" type="submit">Install</button>
+          </div>
+          <p class="form-hint" id="plugin-install-hint">Supports GitHub repository, commit, and tree URLs. Repository URLs use the latest tag, or pin the current default-branch commit when no tag exists.</p>
+          <label class="build-option" id="build-option" hidden>
+            <input id="allow-build" type="checkbox">
+            <span id="allow-build-label">Allow this GitHub package to run install and build scripts. Review its source first.</span>
+          </label>
+        </form>
+        <div id="home-notices">
+          <div class="feedback" id="plugin-feedback" role="status" aria-live="polite"></div>
+          <div class="restart" id="restart-banner">
+            <p id="restart-text">Plugin settings changed. Restart Harness to apply them.</p>
+            <button class="button button--primary" id="restart" type="button">Restart now</button>
+          </div>
         </div>
-        <div class="summary" id="plugin-summary" aria-live="polite">Loading…</div>
-      </section>
-      <form class="form-block" id="plugin-install-form">
-        <label for="plugin-spec" id="plugin-install-label">Install from npm or GitHub</label>
-        <div class="form-row">
-          <input id="plugin-spec" name="plugin" type="text" maxlength="300" autocomplete="off" spellcheck="false" placeholder="@scope/plugin@version or https://github.com/owner/repo" required>
-          <button class="button button--primary" id="plugin-install" type="submit">Install</button>
+        <div class="section catalog-entry">
+          <button class="catalog-card" id="open-catalog" type="button" aria-labelledby="catalog-entry-title catalog-entry-description">
+            <span class="catalog-card-copy">
+              <span class="catalog-card-title" id="catalog-entry-title">Online plugins</span>
+              <span class="catalog-card-description" id="catalog-entry-description">Browse and search DSH plugins from the GitHub community catalog.</span>
+            </span>
+            <span class="catalog-card-side">
+              <span class="catalog-card-note" id="catalog-entry-note" aria-live="polite">Loading online catalog…</span>
+              <span class="catalog-card-action" id="catalog-entry-action">Browse catalog →</span>
+            </span>
+          </button>
         </div>
-        <p class="form-hint" id="plugin-install-hint">Supports GitHub repository, commit, and tree URLs. Repository URLs use the latest tag, or pin the current default-branch commit when no tag exists.</p>
-        <label class="build-option" id="build-option" hidden>
-          <input id="allow-build" type="checkbox">
-          <span id="allow-build-label">Allow this GitHub package to run install and build scripts. Review its source first.</span>
-        </label>
-      </form>
-      <div class="feedback" id="plugin-feedback" role="status" aria-live="polite"></div>
-      <div class="restart" id="restart-banner">
-        <p id="restart-text">Plugin settings changed. Restart Harness to apply them.</p>
-        <button class="button button--primary" id="restart" type="button">Restart now</button>
+        <section class="section" aria-labelledby="installed-heading">
+          <div class="section-head"><h3 id="installed-heading">Installed plugins</h3><p class="section-note" id="installed-note">Managed in ~/.dsh/profiles/web</p></div>
+          <div class="skeleton" id="plugin-loading" aria-label="Loading plugins">
+            <div class="skeleton-row"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+            <div class="skeleton-row"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+          </div>
+          <div class="item-list" id="plugin-list" hidden></div>
+          <div class="empty" id="plugin-empty" hidden>No user plugins are installed.</div>
+        </section>
+        <section class="section" aria-labelledby="system-heading">
+          <div class="section-head"><h3 id="system-heading">System bundles</h3><p class="section-note" id="system-note">Required by the web profile</p></div>
+          <div class="item-list" id="system-list"></div>
+        </section>
       </div>
-      <section class="section discovery" aria-labelledby="discover-heading">
-        <div class="section-head"><h3 id="discover-heading">Discover community plugins</h3><p class="section-note" id="discover-note" aria-live="polite">Loading online catalog…</p></div>
-        <label class="search-field" for="plugin-search">
+      <section class="catalog-view" id="catalog-view" aria-labelledby="discover-heading" hidden>
+        <button class="text-button catalog-back" id="close-catalog" type="button">← Back to plugin manager</button>
+        <div class="intro catalog-intro">
+          <div class="intro-copy">
+            <h2 id="discover-heading">Online plugins</h2>
+            <p class="intro-note" id="discover-hint">Cataloged from the GitHub dsh-plugin topic. Review a plugin's source before installing it.</p>
+          </div>
+          <p class="summary" id="discover-note" aria-live="polite">Loading online catalog…</p>
+        </div>
+        <div id="catalog-notices"></div>
+        <label class="search-field catalog-search" for="plugin-search">
           <span class="visually-hidden" id="plugin-search-label">Search community plugins</span>
           <input id="plugin-search" type="search" autocomplete="off" spellcheck="false" placeholder="Search by name, description, or category" disabled>
         </label>
-        <p class="form-hint" id="discover-hint">Cataloged from the GitHub dsh-plugin topic. Review a plugin's source before installing it.</p>
         <div class="skeleton" id="discover-loading" aria-label="Loading community plugins">
           <div class="skeleton-row"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
           <div class="skeleton-row"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
         </div>
         <div class="item-list" id="discover-list" hidden></div>
         <div class="empty" id="discover-empty" hidden>No plugins match this search.</div>
-      </section>
-      <section class="section" aria-labelledby="installed-heading">
-        <div class="section-head"><h3 id="installed-heading">Installed plugins</h3><p class="section-note" id="installed-note">Managed in ~/.dsh/profiles/web</p></div>
-        <div class="skeleton" id="plugin-loading" aria-label="Loading plugins">
-          <div class="skeleton-row"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
-          <div class="skeleton-row"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
-        </div>
-        <div class="item-list" id="plugin-list" hidden></div>
-        <div class="empty" id="plugin-empty" hidden>No user plugins are installed.</div>
-      </section>
-      <section class="section" aria-labelledby="system-heading">
-        <div class="section-head"><h3 id="system-heading">System bundles</h3><p class="section-note" id="system-note">Required by the web profile</p></div>
-        <div class="item-list" id="system-list"></div>
       </section>
     </main>
   </body>

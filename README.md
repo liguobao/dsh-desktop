@@ -12,7 +12,7 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 - Uses a random free loopback port instead of assuming port `3080` is available.
 - Shows immediate, stage-based startup progress while the local Harness becomes ready.
 - Starts and stops the Harness server together with the desktop application.
-- Provides separate plugin installation and Skills management windows for npm, GitHub, and user Skills.
+- Provides a direct Plugins menu with online catalog search and npm/GitHub installation.
 - Opens conversation files in VS Code, Cursor, VSCodium, or Zed, with workspace actions in the sidebar, session header, and native menu.
 - Keeps Electron's Node integration disabled and blocks untrusted in-app navigation.
 - Includes native installers and portable packages built by GitHub Actions.
@@ -60,11 +60,9 @@ See the upstream [Web UI guide](https://deepseek-harness.github.io/deepseek-harn
 
 Clicking a code or text file in a conversation opens it in the detected editor. HTML, images, PDFs, and directories continue to use their system-default application. Each workspace's sidebar **…** menu offers **Open in Editor** and **Open Folder**; the VS Code icon in the session header also opens the current workspace in the preferred editor. Select VS Code, Cursor, VSCodium, or Zed through the native **Workspace → Preferred Editor** menu. Files fall back to the system-default application when no supported editor is detected; an explicit editor action reports an error instead.
 
-The **Extensions** menu provides **Plugin Installation** and **Skills Management**. The plugin window searches the online community catalog discovered through the GitHub [`dsh-plugin` topic](https://github.com/topics/dsh-plugin), with a bundled catalog snapshot for offline use and one-click installation after source review. Direct installs accept npm names plus GitHub repository, commit, tree, and `#ref` URLs. Repository URLs install the latest tag, or pin the current default-branch commit when no tag exists. Installed GitHub plugins can update online to the latest default-branch commit. Restart Harness after plugin changes. Maintainers can refresh the bundled snapshot with `npm run catalog:generate`.
+The **Plugins** menu opens the plugin manager directly. Its **Online plugins** card opens a separate searchable catalog discovered through the GitHub [`dsh-plugin` topic](https://github.com/topics/dsh-plugin), with a bundled catalog snapshot for offline use and one-click installation after source review. Direct installs accept npm names plus GitHub repository, commit, tree, and `#ref` URLs. Repository URLs install the latest tag, or pin the current default-branch commit when no tag exists. Installed GitHub plugins can update online to the latest default-branch commit. Restart Harness after plugin changes. Maintainers can refresh the bundled snapshot with `npm run catalog:generate`.
 
 GitHub install and build scripts are disabled by default and can be explicitly allowed when required. Plugins run with the same local permissions as Harness, so install only trusted code.
-
-Skills Management can create, import, reveal, enable, disable, and delete user Skills. Skill changes do not require a Harness restart.
 
 The application checks the latest public GitHub Release shortly after startup. When a newer `vX.Y.Z` tag is available, it downloads the matching DMG, setup EXE, or AppImage to the system Downloads folder and verifies the file against GitHub's SHA-256 digest. The user then opens the installer and follows the system update flow; the app never replaces or restarts itself. You can also use **Help → Check for Updates** at any time.
 
@@ -79,15 +77,12 @@ DSH Desktop
 ├─ Electron main process
 │  ├─ restricted native path-opening bridge
 │  ├─ plugin profile service + bundled pnpm
-│  ├─ user Skill filesystem manager
 │  └─ bundled Electron runtime in Node mode
 │     └─ @deepseek-ai/dsh web --patch <desktop-adapter> --port 0
 ├─ sandboxed Harness window
 │  └─ http://127.0.0.1:<assigned-port>
-├─ sandboxed local plugin-manager window
-│  └─ $DSH_HOME/profiles/web/package.json
-└─ sandboxed local extension-manager window
-   └─ $DSH_HOME/skills
+└─ sandboxed local plugin-manager window
+   └─ $DSH_HOME/profiles/web/package.json
 ```
 
 Desktop capabilities come from the standalone dual-face `@dsh-desktop/integration` package in this repository. At startup, the app copies only that package into the upstream `$DSH_HOME/profiles/node_modules` extension-resolution directory and loads it with a one-off `--patch`. It does not modify the bundled `@deepseek-ai/dsh` CLI, an external DSH installation, or the user's `cordis.patch.yml`; optional DSH updates live in the app-owned user-data runtime instead.
@@ -139,7 +134,7 @@ The workflow intentionally does not contain signing identities. Maintainers can 
 
 DeepSeek Harness is an agent harness that can read and modify selected workspace files and execute commands with the permissions you grant. Review the active workspace, model provider, and permission prompts before starting a task.
 
-The HTTP server binds only to `127.0.0.1`. Renderers have no Node.js access and cannot navigate outside their assigned origin or local page. The Harness preload accepts only workspace-scope and authorized path-opening messages from the exact Harness origin. Plugin and extension windows use different preloads and exact local-page checks, exposing only their respective fixed plugin or Skill operations; package-manager commands use argument arrays rather than a shell. Skill mutations are restricted to direct entries in the two app-managed roots, and imports reject symbolic links. The main process rejects paths and symlink escapes outside registered workspaces. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+The HTTP server binds only to `127.0.0.1`. Renderers have no Node.js access and cannot navigate outside their assigned origin or local page. The Harness preload accepts only workspace-scope and authorized path-opening messages from the exact Harness origin. The plugin manager uses its own preload and exact local-page check, exposing only fixed plugin operations; package-manager commands use argument arrays rather than a shell. The main process rejects paths and symlink escapes outside registered workspaces. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## Project status and trademarks
 

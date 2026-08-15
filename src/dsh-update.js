@@ -25,7 +25,7 @@ function dshUpdateCopy(isChinese) {
       restoreDetail: '当前会话会重新加载，已下载的 DSH 版本会保留在用户数据目录。',
       restoreNow: '恢复并重启',
       cancel: '取消',
-      operationBusy: '另一个扩展或 DSH 操作正在进行。',
+      operationBusy: '另一个插件或 DSH 操作正在进行。',
     } : {
       check: 'Check for DSH Updates…',
       checking: 'Checking for DSH Updates…',
@@ -46,7 +46,7 @@ function dshUpdateCopy(isChinese) {
       restoreDetail: 'The current session will reload. Downloaded DSH versions remain in the user data directory.',
       restoreNow: 'Restore and Restart',
       cancel: 'Cancel',
-      operationBusy: 'Another extension or DSH operation is already running.',
+      operationBusy: 'Another plugin or DSH operation is already running.',
     }
 }
 

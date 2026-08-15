@@ -30,14 +30,6 @@ import {
   setPluginEnabled,
   updatePlugin as updateProfilePlugin,
 } from './plugin-management.js'
-import {
-  createSkill,
-  importSkill,
-  readSkillCatalog,
-  resolveManagedSkillPath,
-  setSkillEnabled,
-  skillDirectories,
-} from './skill-management.js'
 import { loadingStateScript, normalizeProgress } from './startup-progress.js'
 
 const require = createRequire(import.meta.url)
@@ -70,11 +62,8 @@ function setLocale(locale) {
       automaticEditor: '自动选择',
       noEditor: '未检测到受支持的编辑器',
       nativeOpenFailed: '无法打开本地路径',
-      extensions: '扩展',
-      managePlugins: '插件安装',
-      manageExtensions: 'Skills管理',
+      plugins: '插件',
       pluginManager: 'DSH 插件管理',
-      extensionManager: 'DSH Skills',
       dshRollback: '新版 DSH 启动失败，正在恢复内置版本…',
       dshRollbackTitle: '已恢复内置 DSH',
       dshRollbackMessage: version => `无法使用更新后的 DSH ${version}，已自动恢复 DSH Desktop 内置版本。`,
@@ -102,11 +91,8 @@ function setLocale(locale) {
       automaticEditor: 'Automatic',
       noEditor: 'No supported editor detected',
       nativeOpenFailed: 'Could Not Open Local Path',
-      extensions: 'Extensions',
-      managePlugins: 'Plugin Installation',
-      manageExtensions: 'Skills Management',
+      plugins: 'Plugins',
       pluginManager: 'DSH Plugin Manager',
-      extensionManager: 'DSH Skills',
       dshRollback: 'The updated DSH failed to start. Restoring the bundled version…',
       dshRollbackTitle: 'Bundled DSH Restored',
       dshRollbackMessage: version => `DSH ${version} could not start, so DSH Desktop restored its bundled version automatically.`,
@@ -118,7 +104,6 @@ setLocale('en')
 let mainWindow
 let splashWindow
 let pluginWindow
-let extensionWindow
 let server
 let harnessOrigin
 let quitting = false
@@ -228,15 +213,6 @@ function senderIsPluginManager(event) {
   if (pluginWindow?.isDestroyed() !== false || event.sender !== pluginWindow.webContents) return false
   try {
     return fileURLToPath(event.senderFrame?.url ?? event.sender.getURL()) === pagePath('plugins.html')
-  } catch {
-    return false
-  }
-}
-
-function senderIsExtensionManager(event) {
-  if (extensionWindow?.isDestroyed() !== false || event.sender !== extensionWindow.webContents) return false
-  try {
-    return fileURLToPath(event.senderFrame?.url ?? event.sender.getURL()) === pagePath('extensions.html')
   } catch {
     return false
   }
@@ -382,76 +358,12 @@ function installDesktopIpc() {
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
   })
-  ipcMain.handle('dsh-desktop:skills-list', (event) => {
-    if (!senderIsExtensionManager(event) || dshHome === undefined) return { ok: false, error: 'Untrusted skill request' }
-    try {
-      return { ok: true, catalog: readSkillCatalog({ dshHome }) }
-    } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : String(error) }
-    }
-  })
-  ipcMain.handle('dsh-desktop:skills-create', (event, name, description) => {
-    if (!senderIsExtensionManager(event)) return { ok: false, error: 'Untrusted skill request' }
-    return runPluginOperation(async () => createSkill({ dshHome, name, description }))
-  })
-  ipcMain.handle('dsh-desktop:skills-import', async (event) => {
-    if (!senderIsExtensionManager(event) || extensionWindow?.isDestroyed() !== false) {
-      return { ok: false, error: 'Untrusted skill request' }
-    }
-    const selection = await dialog.showOpenDialog(extensionWindow, {
-      title: isChinese ? '选择包含 SKILL.md 的文件夹' : 'Choose a folder containing SKILL.md',
-      properties: ['openDirectory'],
-    })
-    if (selection.canceled || selection.filePaths.length !== 1) {
-      return { ok: true, cancelled: true, catalog: readSkillCatalog({ dshHome }) }
-    }
-    return runPluginOperation(async () => importSkill({ dshHome, sourcePath: selection.filePaths[0] }))
-  })
-  ipcMain.handle('dsh-desktop:skills-enabled', (event, entry, enabled) => {
-    if (!senderIsExtensionManager(event) || typeof enabled !== 'boolean') {
-      return { ok: false, error: 'Untrusted skill request' }
-    }
-    return runPluginOperation(async () => setSkillEnabled({ dshHome, entry, enabled }))
-  })
-  ipcMain.handle('dsh-desktop:skills-reveal', (event, entry, enabled) => {
-    if (!senderIsExtensionManager(event)) return { ok: false, error: 'Untrusted skill request' }
-    try {
-      shell.showItemInFolder(resolveManagedSkillPath({ dshHome, entry, enabled }))
-      return { ok: true }
-    } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : String(error) }
-    }
-  })
-  ipcMain.handle('dsh-desktop:skills-remove', (event, entry, enabled) => {
-    if (!senderIsExtensionManager(event)) return { ok: false, error: 'Untrusted skill request' }
-    return runPluginOperation(async () => {
-      await shell.trashItem(resolveManagedSkillPath({ dshHome, entry, enabled }))
-      return readSkillCatalog({ dshHome })
-    })
-  })
-  ipcMain.handle('dsh-desktop:skills-open-root', async (event) => {
-    if (!senderIsExtensionManager(event) || dshHome === undefined) return { ok: false, error: 'Untrusted skill request' }
-    try {
-      const { activeDir } = skillDirectories(dshHome)
-      mkdirSync(activeDir, { recursive: true, mode: 0o700 })
-      await openSystemPath(activeDir)
-      return { ok: true }
-    } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : String(error) }
-    }
-  })
-  ipcMain.handle('dsh-desktop:skills-docs', (event) => {
-    if (!senderIsExtensionManager(event)) return { ok: false, error: 'Untrusted skill request' }
-    const document = isChinese ? 'README.zh.md' : 'README.md'
-    void shell.openExternal(`https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/skill/skill-filesystem/${document}`)
-    return { ok: true }
-  })
 }
 
 async function runPluginOperation(action) {
   if (dshHome === undefined) return { ok: false, error: 'Harness home is unavailable' }
   if (pluginOperationRunning || (dshUpdateController !== undefined && dshUpdateController.state !== 'idle')) {
-    return { ok: false, error: 'Another extension or DSH operation is already running' }
+    return { ok: false, error: 'Another plugin or DSH operation is already running' }
   }
   pluginOperationRunning = true
   const controller = new AbortController()
@@ -461,7 +373,7 @@ async function runPluginOperation(action) {
     return { ok: true, catalog }
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
-    writeLog('stderr', `Extension operation failed: ${detail}\n`)
+    writeLog('stderr', `Plugin operation failed: ${detail}\n`)
     return { ok: false, error: detail }
   } finally {
     if (pluginOperationController === controller) pluginOperationController = undefined
@@ -617,7 +529,6 @@ function createWindow() {
   window.on('closed', () => {
     mainWindow = undefined
     if (pluginWindow?.isDestroyed() === false) pluginWindow.close()
-    if (extensionWindow?.isDestroyed() === false) extensionWindow.close()
   })
   return window
 }
@@ -671,18 +582,6 @@ function showPluginManager() {
     if (pluginWindow === window) pluginWindow = undefined
   })
   void pluginWindow.loadFile(pagePath('plugins.html'), {
-    query: { lang: isChinese ? 'zh' : 'en' },
-  })
-}
-
-function showExtensionManager() {
-  if (focusManagerWindow(extensionWindow)) return
-  extensionWindow = createManagerWindow({ page: 'extensions.html', preload: 'extension-preload.cjs', title: copy.extensionManager })
-  const window = extensionWindow
-  window.on('closed', () => {
-    if (extensionWindow === window) extensionWindow = undefined
-  })
-  void extensionWindow.loadFile(pagePath('extensions.html'), {
     query: { lang: isChinese ? 'zh' : 'en' },
   })
 }
@@ -849,13 +748,7 @@ function buildMenu() {
         { label: copy.preferredEditor, submenu: editorItems },
       ],
     },
-    {
-      label: copy.extensions,
-      submenu: [
-        { label: copy.managePlugins, click: showPluginManager },
-        { label: copy.manageExtensions, click: showExtensionManager },
-      ],
-    },
+    { label: copy.plugins, click: showPluginManager },
     {
       label: copy.view,
       submenu: [
