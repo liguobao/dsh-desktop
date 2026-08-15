@@ -13,6 +13,7 @@ export const PLUGIN_PROFILE = 'web'
 export const MAX_PLUGIN_SPEC_LENGTH = 300
 export const MAX_PLUGIN_OUTPUT_LENGTH = 64 * 1024
 export const SYSTEM_BUNDLES = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
+const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
 
 const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/i
 const PACKAGE_SELECTOR_PATTERN = /^[a-z0-9~^*<>=|+_.-]+$/i
@@ -39,6 +40,31 @@ function writeTextAtomic(path, value) {
   renameSync(temporary, path)
 }
 
+function readPluginInstallHistory(profileDir) {
+  try {
+    const value = readJson(join(profileDir, PLUGIN_INSTALL_HISTORY))
+    if (value?.version !== 1 || typeof value.installedAt !== 'object' || value.installedAt === null || Array.isArray(value.installedAt)) return {}
+    return Object.fromEntries(Object.entries(value.installedAt).filter(([name, timestamp]) =>
+      PACKAGE_NAME_PATTERN.test(name) && typeof timestamp === 'string' && Number.isFinite(Date.parse(timestamp)),
+    ))
+  } catch {
+    return {}
+  }
+}
+
+function recordPluginInstalled(profileDir, name) {
+  const installedAt = readPluginInstallHistory(profileDir)
+  installedAt[name] = new Date().toISOString()
+  writeJsonAtomic(join(profileDir, PLUGIN_INSTALL_HISTORY), { version: 1, installedAt })
+}
+
+function forgetPluginInstallHistory(profileDir, name) {
+  const installedAt = readPluginInstallHistory(profileDir)
+  if (!Object.hasOwn(installedAt, name)) return
+  delete installedAt[name]
+  writeJsonAtomic(join(profileDir, PLUGIN_INSTALL_HISTORY), { version: 1, installedAt })
+}
+
 function packageManifestPath(profileDir, packageName) {
   return join(profileDir, 'node_modules', ...packageName.split('/'), 'package.json')
 }
@@ -61,7 +87,7 @@ function installedPluginRequiresBuild(profileDir, packageName) {
   return declaresBuildScript || existsSync(join(profileDir, 'node_modules', ...packageName.split('/'), 'binding.gyp'))
 }
 
-function pluginMetadata(profileDir, packageName, requested, enabled) {
+function pluginMetadata(profileDir, packageName, requested, enabled, installedAt) {
   const manifest = readInstalledManifest(profileDir, packageName)
   const bundle = manifest?.dsh?.bundle?.patch !== undefined
   return {
@@ -72,6 +98,7 @@ function pluginMetadata(profileDir, packageName, requested, enabled) {
     description: typeof manifest?.description === 'string' ? manifest.description : undefined,
     homepage: typeof manifest?.homepage === 'string' ? manifest.homepage : undefined,
     installed: manifest !== undefined,
+    ...(installedAt === undefined ? {} : { installedAt }),
     bundle,
     enabled: bundle && enabled,
   }
@@ -227,9 +254,10 @@ export function readPluginCatalog({ dshHome, profile = PLUGIN_PROFILE }) {
   const manifest = readJson(manifestPath)
   const dependencies = manifest.dependencies ?? {}
   const bundles = Array.isArray(manifest.dsh?.profile?.bundles) ? manifest.dsh.profile.bundles : []
+  const installedAt = readPluginInstallHistory(profileDir)
   const dependencyNames = new Set(Object.keys(dependencies).filter(name => !SYSTEM_BUNDLES.has(name)))
   const plugins = Object.entries(dependencies).filter(([name]) => !SYSTEM_BUNDLES.has(name)).map(([name, requested]) =>
-    pluginMetadata(profileDir, name, typeof requested === 'string' ? requested : '', bundles.includes(name)),
+    pluginMetadata(profileDir, name, typeof requested === 'string' ? requested : '', bundles.includes(name), installedAt[name]),
   )
   const system = bundles.filter(name => SYSTEM_BUNDLES.has(name) || !dependencyNames.has(name)).map(name => ({ name, enabled: true }))
   return { profile, profileDir, plugins, system, initialized: true }
@@ -545,6 +573,7 @@ export async function installPlugin({
       for (const candidate of superseded) {
         forgetGitHubBuildPermission(profileDir, candidate)
         forgetPluginBundle({ dshHome, name: candidate.name, profile })
+        forgetPluginInstallHistory(profileDir, candidate.name)
       }
       catalog = readPluginCatalog({ dshHome, profile })
       plugin = catalog.plugins.find(candidate => candidate.name === installedName)
@@ -561,6 +590,7 @@ export async function installPlugin({
       profile,
     })
   }
+  if (plugin !== undefined && !previous.has(plugin.name)) recordPluginInstalled(profileDir, plugin.name)
   return {
     ...readPluginCatalog({ dshHome, profile }),
     buildScriptsIgnored: requiredBuildScriptsIgnored && !allowBuildScripts,
@@ -650,5 +680,6 @@ export async function removePlugin({
   })
   forgetGitHubBuildPermission(catalog.profileDir, plugin)
   forgetPluginBundle({ dshHome, name, profile })
+  forgetPluginInstallHistory(catalog.profileDir, name)
   return readPluginCatalog({ dshHome, profile })
 }

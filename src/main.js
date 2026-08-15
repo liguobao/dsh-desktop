@@ -748,7 +748,12 @@ function buildMenu() {
         { label: copy.preferredEditor, submenu: editorItems },
       ],
     },
-    { label: copy.plugins, click: showPluginManager },
+    {
+      label: copy.plugins,
+      submenu: [
+        { label: copy.pluginManager, click: showPluginManager },
+      ],
+    },
     {
       label: copy.view,
       submenu: [

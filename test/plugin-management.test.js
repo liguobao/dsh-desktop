@@ -208,6 +208,7 @@ test('installs the latest GitHub tag, optionally permits build scripts, and enab
   assert.equal(catalog.plugins[0].source, 'github')
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(catalog.plugins[0].requested, `github:example/dsh-tools#${commit}`)
+  assert.ok(Number.isFinite(Date.parse(catalog.plugins[0].installedAt)))
 })
 
 test('pins an untagged GitHub subdirectory plugin to the default branch commit', async (t) => {
@@ -404,6 +405,7 @@ test('updates a GitHub plugin from the default branch and preserves its disabled
   assert.equal(catalog.upToDate, false)
   assert.equal(catalog.plugins[0].requested, `github:example/dsh-tools#${newCommit}&path:/plugins/tool`)
   assert.equal(catalog.plugins[0].enabled, false)
+  assert.equal(catalog.plugins[0].installedAt, undefined)
 
   const unchanged = await updatePlugin({
     dshHome,
@@ -516,7 +518,7 @@ test('limits plugin IPC to the local plugin page and fixed operations', () => {
   assert.match(main, /senderIsPluginManager\(event\)/)
   assert.match(main, /pagePath\('plugins\.html'\)/)
   assert.match(main, /plugins: '插件'/)
-  assert.match(main, /\{ label: copy\.plugins, click: showPluginManager \}/)
+  assert.match(main, /label: copy\.plugins,[\s\S]*submenu: \[[\s\S]*\{ label: copy\.pluginManager, click: showPluginManager \}/)
   assert.doesNotMatch(main, /senderIsExtensionManager|extensions\.html|dsh-desktop:skills-/)
   assert.match(main, /dsh-desktop:plugins-update/)
   assert.match(main, /dsh-desktop:plugins-discover/)
