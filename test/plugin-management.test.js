@@ -53,10 +53,28 @@ test('accepts registry plugin specs and rejects command or path input', () => {
 })
 
 test('accepts GitHub repository addresses with optional revisions', () => {
-  assert.deepEqual(normalizePluginSpec('https://github.com/example/dsh-tools/'), {
-    spec: 'github:example/dsh-tools',
+  assert.deepEqual(normalizePluginSpec('https://github.com/liguobao/deepseek-harness-remote'), {
+    spec: 'github:liguobao/deepseek-harness-remote',
     source: 'github',
-    repository: 'example/dsh-tools',
+    repository: 'liguobao/deepseek-harness-remote',
+  })
+  assert.deepEqual(normalizePluginSpec('https://github.com/liguobao/deepseek-harness-remote/commit/2d0d9ece1345ff0a80414ee35fe411d35d4b38ac'), {
+    spec: 'github:liguobao/deepseek-harness-remote#2d0d9ece1345ff0a80414ee35fe411d35d4b38ac',
+    source: 'github',
+    repository: 'liguobao/deepseek-harness-remote',
+    ref: '2d0d9ece1345ff0a80414ee35fe411d35d4b38ac',
+  })
+  assert.deepEqual(normalizePluginSpec('https://github.com/liguobao/deepseek-harness-remote/tree/v0.2.5'), {
+    spec: 'github:liguobao/deepseek-harness-remote#v0.2.5',
+    source: 'github',
+    repository: 'liguobao/deepseek-harness-remote',
+    ref: 'v0.2.5',
+  })
+  assert.deepEqual(normalizePluginSpec('https://github.com/liguobao/deepseek-harness-remote#v0.2.5'), {
+    spec: 'github:liguobao/deepseek-harness-remote#v0.2.5',
+    source: 'github',
+    repository: 'liguobao/deepseek-harness-remote',
+    ref: 'v0.2.5',
   })
   assert.deepEqual(normalizePluginSpec('github:example/dsh-tools'), {
     spec: 'github:example/dsh-tools',
@@ -75,7 +93,21 @@ test('accepts GitHub repository addresses with optional revisions', () => {
     repository: 'example/dsh-tools',
     ref: '8f90abc',
   })
-  assert.throws(() => normalizePluginSpec('https://github.com/example/dsh-tools/issues'), /repository address/)
+  assert.deepEqual(normalizePluginSpec('https://github.com/example/dsh-tools/releases/tag/v2.0.0?source=release'), {
+    spec: 'github:example/dsh-tools#v2.0.0',
+    source: 'github',
+    repository: 'example/dsh-tools',
+    ref: 'v2.0.0',
+  })
+  assert.deepEqual(normalizePluginSpec('https://github.com/example/dsh-tools/tree/feature/new-ui'), {
+    spec: 'github:example/dsh-tools#feature/new-ui',
+    source: 'github',
+    repository: 'example/dsh-tools',
+    ref: 'feature/new-ui',
+  })
+  assert.throws(() => normalizePluginSpec('https://github.com/example/dsh-tools/issues'), /repository, commit, or tree/)
+  assert.throws(() => normalizePluginSpec('https://github.com/example/dsh-tools/blob/main/package.json'), /repository, commit, or tree/)
+  assert.throws(() => normalizePluginSpec('https://github.com/example/dsh-tools/commit/not-a-commit'), /repository, commit, or tree/)
   assert.throws(() => normalizePluginSpec('https://github.com/example/dsh-tools#../main'), /Invalid GitHub revision/)
   assert.throws(() => normalizePluginSpec('git@github.com:example/dsh-tools.git'), /npm package name/)
 })

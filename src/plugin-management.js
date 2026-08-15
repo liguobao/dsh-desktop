@@ -88,6 +88,31 @@ function normalizeGitHubRef(value) {
   return value
 }
 
+function decodeGitHubUrlPart(value) {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    throw new Error('Use a GitHub repository, commit, or tree address')
+  }
+}
+
+function githubUrlRef(segments, hash) {
+  const route = segments.slice(2)
+  if (route.length === 0) {
+    return hash === '' ? undefined : normalizeGitHubRef(decodeGitHubUrlPart(hash.slice(1)))
+  }
+  if (route[0].toLowerCase() === 'commit' && route.length === 2 && /^[a-f0-9]{7,40}$/i.test(route[1])) {
+    return route[1]
+  }
+  if (route[0].toLowerCase() === 'tree' && route.length >= 2) {
+    return normalizeGitHubRef(route.slice(1).join('/'))
+  }
+  if (route[0].toLowerCase() === 'releases' && route[1]?.toLowerCase() === 'tag' && route.length >= 3) {
+    return normalizeGitHubRef(route.slice(2).join('/'))
+  }
+  throw new Error('Use a GitHub repository, commit, or tree address')
+}
+
 function githubSource(spec) {
   if (spec.toLowerCase().startsWith('github:')) {
     const source = spec.slice('github:'.length)
@@ -111,7 +136,7 @@ function githubSource(spec) {
   } catch {
     throw new Error('Use a GitHub repository address')
   }
-  const segments = url.pathname.split('/').filter(Boolean)
+  const segments = url.pathname.split('/').filter(Boolean).map(decodeGitHubUrlPart)
   const owner = segments[0]
   const repository = segments[1]?.replace(/\.git$/i, '')
   if (
@@ -120,15 +145,13 @@ function githubSource(spec) {
     || url.port !== ''
     || url.username !== ''
     || url.password !== ''
-    || url.search !== ''
-    || segments.length !== 2
+    || segments.length < 2
     || !GITHUB_OWNER_PATTERN.test(owner ?? '')
     || !GITHUB_REPOSITORY_PATTERN.test(repository ?? '')
   ) {
-    throw new Error('Use a GitHub repository address')
+    throw new Error('Use a GitHub repository, commit, or tree address')
   }
-  const ref = url.hash === '' ? undefined : url.hash.slice(1)
-  return { owner, repository, ref: normalizeGitHubRef(ref) }
+  return { owner, repository, ref: githubUrlRef(segments, url.hash) }
 }
 
 export function normalizePluginSpec(value) {

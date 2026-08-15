@@ -58,7 +58,7 @@ See the upstream [Web UI guide](https://deepseek-harness.github.io/deepseek-harn
 
 Clicking a code or text file in a conversation opens it in the detected editor. HTML, images, PDFs, and directories continue to use their system-default application. Each workspace's sidebar **…** menu offers **Open in Editor** and **Open Folder**; the VS Code icon in the session header also opens the current workspace in the preferred editor. Select VS Code, Cursor, VSCodium, or Zed through the native **Workspace → Preferred Editor** menu. Files fall back to the system-default application when no supported editor is detected; an explicit editor action reports an error instead.
 
-The **Extensions** menu provides **Plugin Installation** and **Skills Management**. Plugins accept npm package names and GitHub repository URLs. An unversioned repository installs its latest tag and is pinned to a commit. Installed GitHub plugins can update online to the latest commit on the default branch. Restart Harness after plugin changes.
+The **Extensions** menu provides **Plugin Installation** and **Skills Management**. Plugins accept npm names plus GitHub repository, commit, tree, and `#ref` URLs. Repository URLs install the latest tag. Installed GitHub plugins can update online to the latest default-branch commit. Restart Harness after plugin changes.
 
 GitHub install and build scripts are disabled by default and can be explicitly allowed when required. Plugins run with the same local permissions as Harness, so install only trusted code.
 
