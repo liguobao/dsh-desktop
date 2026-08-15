@@ -3,9 +3,8 @@ import { dirname, join } from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import process from 'node:process'
-import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
-import electronUpdater from 'electron-updater'
-import { createAutoUpdateController } from './auto-update.js'
+import { app, BrowserWindow, Menu, dialog, ipcMain, net, shell } from 'electron'
+import { createInstallerUpdateController } from './auto-update.js'
 import { DSH_RUNTIME_DIRECTORY, readActiveDshRuntime } from './dsh-runtime.js'
 import { createDshUpdateController } from './dsh-update.js'
 import {
@@ -42,7 +41,6 @@ import {
 import { loadingStateScript, normalizeProgress } from './startup-progress.js'
 
 const require = createRequire(import.meta.url)
-const { autoUpdater } = electronUpdater
 let isChinese = false
 let copy
 
@@ -154,32 +152,26 @@ function writeUpdaterLog(level, message) {
   writeLog(level === 'error' ? 'stderr' : 'desktop', `[updater/${level}] ${message}\n`)
 }
 
-async function prepareForUpdateInstall() {
-  restartGeneration += 1
-  pluginOperationController?.abort()
-  dshUpdateController?.abort()
-  if (updateCheckTimer !== undefined) clearTimeout(updateCheckTimer)
-  if (dshUpdateCheckTimer !== undefined) clearTimeout(dshUpdateCheckTimer)
-  await server?.stop()
-}
-
 function initializeAutoUpdates() {
-  updateController = createAutoUpdateController({
-    updater: autoUpdater,
+  updateController = createInstallerUpdateController({
     isPackaged: app.isPackaged,
     platform: process.platform,
-    env: process.env,
+    arch: process.arch,
     isChinese,
     currentVersion: app.getVersion(),
+    downloadsDirectory: app.getPath('downloads'),
+    fetchImpl: (url, options) => net.fetch(url, options),
     dialog,
     getWindow: () => mainWindow,
     openReleasePage: url => shell.openExternal(url),
-    beforeQuitAndInstall: prepareForUpdateInstall,
+    openDownloadedFile: path => process.platform === 'linux'
+      ? Promise.resolve(shell.showItemInFolder(path))
+      : shell.openPath(path),
     onStateChange: buildMenu,
     log: writeUpdaterLog,
   })
   if (!updateController.initialize()) {
-    writeUpdaterLog('info', 'Automatic updates are unavailable for this package; the Help menu links to GitHub Releases.')
+    writeUpdaterLog('info', 'No installer is published for this package; the Help menu links to GitHub Releases.')
     return
   }
   updateCheckTimer = setTimeout(() => {
@@ -974,6 +966,7 @@ if (!hasLock) {
     quitting = true
     restartGeneration += 1
     pluginOperationController?.abort()
+    updateController?.abort()
     dshUpdateController?.abort()
     if (updateCheckTimer !== undefined) clearTimeout(updateCheckTimer)
     if (dshUpdateCheckTimer !== undefined) clearTimeout(dshUpdateCheckTimer)

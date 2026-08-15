@@ -16,7 +16,7 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 - Opens conversation files in VS Code, Cursor, VSCodium, or Zed, with workspace actions in the sidebar, session header, and native menu.
 - Keeps Electron's Node integration disabled and blocks untrusted in-app navigation.
 - Includes native installers and portable packages built by GitHub Actions.
-- Checks GitHub Releases for newer semantic-version tags and installs verified updates with user confirmation.
+- Checks GitHub Releases for newer semantic-version tags and downloads SHA-256-verified installers locally.
 - Can update `@deepseek-ai/dsh` independently from npm without replacing the desktop application.
 - Supports both Intel and Apple Silicon macOS systems.
 
@@ -32,7 +32,7 @@ Download the latest package from [GitHub Releases](https://github.com/liguobao/d
 | macOS Intel | `DSH-Desktop-vX.Y.Z-macos-x64.dmg` |
 | Linux x64 | `DSH-Desktop-vX.Y.Z-linux-x64.AppImage` |
 
-Each release provides both installer and portable editions for Windows. Other platforms provide one recommended package per architecture. The macOS ZIP files and update metadata in a Release are consumed by the in-app updater and are not intended as manual downloads.
+Each release provides both installer and portable editions for Windows. Other platforms provide one recommended package per architecture.
 
 The community CI builds are currently unsigned. Windows SmartScreen and macOS Gatekeeper may therefore show a warning. Review the release source and workflow before choosing to continue. On macOS, prefer the standard **Control-click → Open** flow instead of disabling Gatekeeper globally.
 
@@ -66,11 +66,11 @@ GitHub install and build scripts are disabled by default and can be explicitly a
 
 Skills Management can create, import, reveal, enable, disable, and delete user Skills. Skill changes do not require a Harness restart.
 
-The installed application checks the latest public GitHub Release shortly after startup. When a newer `vX.Y.Z` tag is available, it asks before downloading and again before restarting to install it. You can also use **Help → Check for Updates** at any time. Windows portable builds and package formats that cannot update in place open the latest Release for a manual download.
+The application checks the latest public GitHub Release shortly after startup. When a newer `vX.Y.Z` tag is available, it downloads the matching DMG, setup EXE, or AppImage to the system Downloads folder and verifies the file against GitHub's SHA-256 digest. The user then opens the installer and follows the system update flow; the app never replaces or restarts itself. You can also use **Help → Check for Updates** at any time.
 
 DSH itself has a separate update channel. The app compares the running `@deepseek-ai/dsh` version with npm's `latest` tag and offers **Help → Check for DSH Updates**. An accepted version is installed in the app's user-data `dsh-runtime` directory, verified before activation, and then the local Harness restarts. The registry-provided package integrity hash is checked by pnpm during installation. If the new runtime cannot start, DSH Desktop automatically deactivates it and returns to the bundled version. **Help → Restore Bundled DSH** provides the same rollback manually.
 
-The **View → Restart Harness** command restarts the local service. Diagnostic output is available through **Help → Open Logs Folder**. macOS in-place updates require an Apple-signed application; until signing is configured, use the Release DMG when the updater reports a signature error.
+The **View → Restart Harness** command restarts the local service. Diagnostic output is available through **Help → Open Logs Folder**.
 
 ## How it works
 

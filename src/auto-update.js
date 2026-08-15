@@ -1,93 +1,233 @@
-const RELEASES_URL = 'https://github.com/liguobao/dsh-desktop/releases/latest'
+import { createHash } from 'node:crypto'
+import { access, chmod, mkdir, open, rm } from 'node:fs/promises'
+import { basename, extname, join } from 'node:path'
+import semver from 'semver'
 
-function updateCopy(isChinese) {
+const REPOSITORY = 'liguobao/dsh-desktop'
+export const RELEASES_URL = `https://github.com/${REPOSITORY}/releases/latest`
+export const LATEST_RELEASE_API_URL = `https://api.github.com/repos/${REPOSITORY}/releases/latest`
+
+function updateCopy(isChinese, platform) {
+  const revealOnly = platform === 'linux'
   return isChinese ? {
       check: '检查更新…',
       checking: '正在检查更新…',
-      downloading: progress => `正在下载更新… ${String(progress)}%`,
-      available: version => `可更新至 v${version}`,
-      restart: '重启以完成更新',
-      installing: '正在安装更新…',
+      downloading: progress => `正在下载安装包… ${String(progress)}%`,
+      available: version => `可下载 v${version}`,
+      downloaded: revealOnly ? '显示已下载的 AppImage…' : '打开已下载的安装包…',
       releases: '查看最新版本…',
       availableTitle: '发现新版本',
       availableMessage: version => `DSH Desktop ${version} 已发布`,
-      availableDetail: current => `当前版本为 ${current}。是否立即下载更新？`,
-      download: '下载更新',
+      availableDetail: current => `当前版本为 ${current}。是否将安装包下载到系统“下载”目录？`,
+      download: '下载安装包',
       later: '稍后',
-      readyTitle: '更新已准备好',
-      readyMessage: version => `DSH Desktop ${version} 已下载完成`,
-      readyDetail: '重启应用后将自动安装。',
-      restartNow: '立即重启',
+      readyTitle: '安装包已下载',
+      readyMessage: version => `DSH Desktop ${version} 已保存到本地`,
+      readyDetail: path => revealOnly
+        ? `文件位于 ${path}。请退出应用后，用它替换当前 AppImage 并重新打开。`
+        : `文件位于 ${path}。请打开安装包，按系统提示完成更新。`,
+      open: revealOnly ? '在文件夹中显示' : '打开安装包',
       noUpdateTitle: '已是最新版本',
       noUpdateMessage: version => `DSH Desktop ${version} 已是最新版本。`,
-      failedTitle: '更新失败',
-      failedMessage: '无法完成在线更新。',
+      failedTitle: '更新下载失败',
+      failedMessage: '无法下载 DSH Desktop 安装包。',
     } : {
       check: 'Check for Updates…',
       checking: 'Checking for Updates…',
-      downloading: progress => `Downloading Update… ${String(progress)}%`,
-      available: version => `Update to v${version}`,
-      restart: 'Restart to Finish Update',
-      installing: 'Installing Update…',
+      downloading: progress => `Downloading Installer… ${String(progress)}%`,
+      available: version => `Download v${version}`,
+      downloaded: revealOnly ? 'Show Downloaded AppImage…' : 'Open Downloaded Installer…',
       releases: 'View Latest Release…',
       availableTitle: 'Update Available',
       availableMessage: version => `DSH Desktop ${version} is available`,
-      availableDetail: current => `You are using ${current}. Download the update now?`,
-      download: 'Download Update',
+      availableDetail: current => `You are using ${current}. Download the installer to your system Downloads folder?`,
+      download: 'Download Installer',
       later: 'Later',
-      readyTitle: 'Update Ready',
-      readyMessage: version => `DSH Desktop ${version} has been downloaded`,
-      readyDetail: 'Restart the application to install it.',
-      restartNow: 'Restart Now',
+      readyTitle: 'Installer Downloaded',
+      readyMessage: version => `DSH Desktop ${version} has been saved locally`,
+      readyDetail: path => revealOnly
+        ? `The file is at ${path}. Quit the app, replace the current AppImage with this file, and launch it again.`
+        : `The file is at ${path}. Open the installer and follow the system prompts to finish updating.`,
+      open: revealOnly ? 'Show in Folder' : 'Open Installer',
       noUpdateTitle: 'You’re Up to Date',
       noUpdateMessage: version => `DSH Desktop ${version} is the latest version.`,
-      failedTitle: 'Update Failed',
-      failedMessage: 'The online update could not be completed.',
+      failedTitle: 'Update Download Failed',
+      failedMessage: 'The DSH Desktop installer could not be downloaded.',
     }
 }
 
-export function supportsAutomaticUpdates({ isPackaged, platform, env = {} }) {
-  if (!isPackaged || !['darwin', 'linux', 'win32'].includes(platform)) return false
-  if (platform === 'win32' && env.PORTABLE_EXECUTABLE_FILE) return false
-  if (platform === 'linux' && !env.APPIMAGE) return false
-  return true
+export function installerAssetName({ version, platform, arch }) {
+  if (semver.valid(version) !== version) throw new Error('Invalid release version')
+  if (platform === 'darwin' && ['arm64', 'x64'].includes(arch)) {
+    return `DSH-Desktop-v${version}-macos-${arch}.dmg`
+  }
+  if (platform === 'win32' && arch === 'x64') {
+    return `DSH-Desktop-v${version}-windows-${arch}-setup.exe`
+  }
+  if (platform === 'linux' && arch === 'x64') {
+    return `DSH-Desktop-v${version}-linux-${arch}.AppImage`
+  }
+  throw new Error(`No installer is published for ${platform}/${arch}`)
+}
+
+export function supportsInstallerDownloads({ isPackaged, platform, arch }) {
+  if (!isPackaged) return false
+  try {
+    installerAssetName({ version: '0.0.0', platform, arch })
+    return true
+  } catch {
+    return false
+  }
+}
+
+function validatedAssetUrl(url, tagName, assetName) {
+  const parsed = new URL(url)
+  const prefix = `/${REPOSITORY}/releases/download/${tagName}/`
+  if (parsed.protocol !== 'https:' || parsed.hostname !== 'github.com' || !parsed.pathname.startsWith(prefix)) {
+    throw new Error('Release asset URL is not trusted')
+  }
+  if (decodeURIComponent(parsed.pathname.slice(prefix.length)) !== assetName) {
+    throw new Error('Release asset URL does not match its file name')
+  }
+  return parsed.href
+}
+
+export function parseLatestRelease(release, { platform, arch }) {
+  if (release === null || typeof release !== 'object' || typeof release.tag_name !== 'string') {
+    throw new Error('GitHub returned an invalid Release')
+  }
+  if (release.draft === true || release.prerelease === true || !release.tag_name.startsWith('v')) {
+    throw new Error('GitHub returned an unsupported Release')
+  }
+  const version = release.tag_name.slice(1)
+  const name = installerAssetName({ version, platform, arch })
+  const asset = Array.isArray(release.assets)
+    ? release.assets.find(candidate => candidate?.name === name)
+    : undefined
+  if (asset === undefined || asset.state !== 'uploaded') throw new Error(`Release asset is missing: ${name}`)
+  if (!Number.isSafeInteger(asset.size) || asset.size <= 0) throw new Error('Release asset size is invalid')
+  if (typeof asset.digest !== 'string' || !/^sha256:[a-f0-9]{64}$/i.test(asset.digest)) {
+    throw new Error('Release asset has no valid SHA-256 digest')
+  }
+  return {
+    version,
+    asset: {
+      digest: asset.digest.toLowerCase(),
+      name,
+      size: asset.size,
+      url: validatedAssetUrl(asset.browser_download_url, release.tag_name, name),
+    },
+  }
+}
+
+async function pathExists(path) {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function availableDownloadPath(directory, fileName) {
+  if (basename(fileName) !== fileName) throw new Error('Invalid installer file name')
+  const extension = extname(fileName)
+  const stem = fileName.slice(0, fileName.length - extension.length)
+  for (let index = 0; index < 10_000; index += 1) {
+    const suffix = index === 0 ? '' : ` (${String(index)})`
+    const candidate = join(directory, `${stem}${suffix}${extension}`)
+    if (!(await pathExists(candidate))) return candidate
+  }
+  throw new Error('Could not choose a local installer file name')
+}
+
+async function writeChunk(handle, chunk) {
+  const buffer = Buffer.from(chunk)
+  let offset = 0
+  while (offset < buffer.length) {
+    const result = await handle.write(buffer, offset, buffer.length - offset)
+    if (result.bytesWritten <= 0) throw new Error('Could not write the installer file')
+    offset += result.bytesWritten
+  }
+  return buffer
+}
+
+export async function downloadInstallerAsset({
+  asset,
+  downloadsDirectory,
+  fetchImpl,
+  platform,
+  signal,
+  onProgress = () => {},
+}) {
+  await mkdir(downloadsDirectory, { recursive: true })
+  const destination = await availableDownloadPath(downloadsDirectory, asset.name)
+  const response = await fetchImpl(asset.url, {
+    headers: { Accept: 'application/octet-stream' },
+    redirect: 'follow',
+    signal,
+  })
+  if (!response.ok) throw new Error(`GitHub download failed with HTTP ${String(response.status)}`)
+  if (response.body === null) throw new Error('GitHub download returned an empty response')
+
+  const handle = await open(destination, 'wx', 0o600)
+  const hash = createHash('sha256')
+  let received = 0
+  let completed = false
+  let lastProgress = -1
+  try {
+    for await (const chunk of response.body) {
+      const buffer = await writeChunk(handle, chunk)
+      hash.update(buffer)
+      received += buffer.length
+      if (received > asset.size) throw new Error('Downloaded installer is larger than the Release asset')
+      const progress = Math.min(100, Math.floor((received / asset.size) * 100))
+      if (progress !== lastProgress) {
+        lastProgress = progress
+        onProgress(progress)
+      }
+    }
+    await handle.sync()
+    if (received !== asset.size) throw new Error(`Installer size mismatch: expected ${String(asset.size)}, received ${String(received)}`)
+    const actualDigest = `sha256:${hash.digest('hex')}`
+    if (actualDigest !== asset.digest) throw new Error('Installer SHA-256 verification failed')
+    if (platform === 'linux') await chmod(destination, 0o755)
+    completed = true
+    if (lastProgress !== 100) onProgress(100)
+    return destination
+  } finally {
+    await handle.close()
+    if (!completed) await rm(destination, { force: true })
+  }
 }
 
 function errorDetail(error) {
   return error instanceof Error ? error.message : String(error)
 }
 
-function updaterLogger(log) {
-  return Object.fromEntries(['debug', 'info', 'warn', 'error'].map(level => [level, (...values) => {
-    log(level, values.map(value => typeof value === 'string' ? value : JSON.stringify(value)).join(' '))
-  }]))
-}
-
-export function createAutoUpdateController({
-  updater,
+export function createInstallerUpdateController({
   isPackaged,
   platform,
-  env,
+  arch,
   isChinese,
   currentVersion,
+  downloadsDirectory,
+  fetchImpl,
   dialog,
   getWindow,
   openReleasePage,
-  beforeQuitAndInstall,
+  openDownloadedFile,
   onStateChange = () => {},
   log = () => {},
+  downloadImpl = downloadInstallerAsset,
 }) {
-  const copy = updateCopy(isChinese)
-  const supported = supportsAutomaticUpdates({ isPackaged, platform, env })
+  const copy = updateCopy(isChinese, platform)
+  const supported = supportsInstallerDownloads({ isPackaged, platform, arch })
   let state = supported ? 'idle' : 'unsupported'
   let progress = 0
   let targetVersion
-  let initialized = false
-  let manualCheck = false
-  let interactiveFlow = false
-  let availablePromptOpen = false
-  let installPromptOpen = false
-  const handledErrors = new WeakSet()
+  let downloadedPath
+  let operationController
 
   function setState(next, details = {}) {
     state = next
@@ -101,8 +241,7 @@ export function createAutoUpdateController({
     if (state === 'checking') return { label: copy.checking, enabled: false }
     if (state === 'downloading') return { label: copy.downloading(progress), enabled: false }
     if (state === 'available') return { label: copy.available(targetVersion), enabled: false }
-    if (state === 'downloaded') return { label: copy.restart, enabled: true }
-    if (state === 'installing') return { label: copy.installing, enabled: false }
+    if (state === 'downloaded') return { label: copy.downloaded, enabled: true }
     return { label: copy.check, enabled: true }
   }
 
@@ -113,13 +252,11 @@ export function createAutoUpdateController({
       : dialog.showMessageBox(options)
   }
 
-  async function showFailure(error, shouldNotify) {
+  async function showFailure(error, notify) {
     const detail = errorDetail(error)
-    log('error', `Update failed: ${detail}`)
-    manualCheck = false
-    interactiveFlow = false
-    setState('idle', { progress: 0 })
-    if (shouldNotify) {
+    log('error', `Update download failed: ${detail}`)
+    setState(downloadedPath === undefined ? 'idle' : 'downloaded', { progress: 0 })
+    if (notify) {
       await showMessage({
         type: 'error',
         title: copy.failedTitle,
@@ -129,43 +266,71 @@ export function createAutoUpdateController({
     }
   }
 
-  async function promptInstall(info = {}) {
-    if (installPromptOpen || state !== 'downloaded') return
-    installPromptOpen = true
+  async function promptDownloaded() {
+    if (downloadedPath === undefined) return
+    const result = await showMessage({
+      type: 'info',
+      title: copy.readyTitle,
+      message: copy.readyMessage(targetVersion ?? currentVersion),
+      detail: copy.readyDetail(downloadedPath),
+      buttons: [copy.open, copy.later],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    })
+    if (result.response !== 0) return
     try {
-      const version = info.version ?? targetVersion ?? currentVersion
-      const result = await showMessage({
-        type: 'info',
-        title: copy.readyTitle,
-        message: copy.readyMessage(version),
-        detail: copy.readyDetail,
-        buttons: [copy.restartNow, copy.later],
-        defaultId: 0,
-        cancelId: 1,
-        noLink: true,
-      })
-      if (result.response !== 0) return
-      setState('installing')
-      await beforeQuitAndInstall()
-      updater.quitAndInstall(false, true)
+      const error = await openDownloadedFile(downloadedPath)
+      if (typeof error === 'string' && error !== '') throw new Error(error)
     } catch (error) {
       await showFailure(error, true)
-    } finally {
-      installPromptOpen = false
     }
   }
 
-  async function handleAvailable(info = {}) {
-    if (availablePromptOpen) return
-    availablePromptOpen = true
-    manualCheck = false
-    const version = info.version ?? currentVersion
-    setState('available', { version })
+  async function fetchLatestRelease(signal) {
+    const response = await fetchImpl(LATEST_RELEASE_API_URL, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      signal,
+    })
+    if (!response.ok) throw new Error(`GitHub Release check failed with HTTP ${String(response.status)}`)
+    return parseLatestRelease(await response.json(), { platform, arch })
+  }
+
+  async function check(manual = false) {
+    if (!supported) {
+      if (manual) await openReleasePage(RELEASES_URL)
+      return
+    }
+    if (state === 'downloaded') {
+      if (manual) await promptDownloaded()
+      return
+    }
+    if (state !== 'idle') return
+    setState('checking', { progress: 0 })
+    operationController = new AbortController()
+    let interactive = false
     try {
+      const release = await fetchLatestRelease(operationController.signal)
+      if (!semver.gt(release.version, currentVersion)) {
+        setState('idle', { progress: 0 })
+        if (manual) {
+          await showMessage({
+            type: 'info',
+            title: copy.noUpdateTitle,
+            message: copy.noUpdateMessage(currentVersion),
+          })
+        }
+        return
+      }
+      targetVersion = release.version
+      setState('available', { version: release.version })
       const result = await showMessage({
         type: 'info',
         title: copy.availableTitle,
-        message: copy.availableMessage(version),
+        message: copy.availableMessage(release.version),
         detail: copy.availableDetail(currentVersion),
         buttons: [copy.download, copy.later],
         defaultId: 0,
@@ -176,82 +341,36 @@ export function createAutoUpdateController({
         setState('idle', { progress: 0 })
         return
       }
-      interactiveFlow = true
+      interactive = true
       setState('downloading', { progress: 0 })
-      try {
-        await updater.downloadUpdate()
-      } catch (error) {
-        if (!(error instanceof Error) || !handledErrors.has(error)) await showFailure(error, true)
-      }
-    } finally {
-      availablePromptOpen = false
-    }
-  }
-
-  function initialize() {
-    if (initialized || !supported) return supported
-    initialized = true
-    updater.autoDownload = false
-    updater.autoInstallOnAppQuit = true
-    updater.logger = updaterLogger(log)
-    updater.on('checking-for-update', () => setState('checking', { progress: 0 }))
-    updater.on('update-available', info => { void handleAvailable(info) })
-    updater.on('update-not-available', info => {
-      const shouldNotify = manualCheck
-      manualCheck = false
-      setState('idle', { progress: 0 })
-      if (shouldNotify) {
-        void showMessage({
-          type: 'info',
-          title: copy.noUpdateTitle,
-          message: copy.noUpdateMessage(info?.version ?? currentVersion),
-        })
-      }
-    })
-    updater.on('download-progress', info => {
-      const nextProgress = Math.max(0, Math.min(100, Math.round(info?.percent ?? 0)))
-      if (state !== 'downloading' || nextProgress === progress) return
-      setState('downloading', { progress: nextProgress })
-    })
-    updater.on('update-downloaded', info => {
-      interactiveFlow = false
-      setState('downloaded', { version: info?.version ?? targetVersion, progress: 100 })
-      void promptInstall(info)
-    })
-    updater.on('error', error => {
-      if (error instanceof Error) handledErrors.add(error)
-      const shouldNotify = manualCheck || interactiveFlow || state === 'downloading' || state === 'installing'
-      void showFailure(error, shouldNotify)
-    })
-    return true
-  }
-
-  async function check(manual = false) {
-    if (!supported) {
-      if (manual) await openReleasePage(RELEASES_URL)
-      return
-    }
-    if (state === 'downloaded') {
-      if (manual) await promptInstall({ version: targetVersion })
-      return
-    }
-    if (!['idle'].includes(state)) return
-    manualCheck = manual
-    setState('checking', { progress: 0 })
-    try {
-      await updater.checkForUpdates()
+      downloadedPath = await downloadImpl({
+        asset: release.asset,
+        downloadsDirectory,
+        fetchImpl,
+        platform,
+        signal: operationController.signal,
+        onProgress: next => setState('downloading', { progress: next }),
+      })
+      setState('downloaded', { progress: 100 })
+      await promptDownloaded()
     } catch (error) {
-      if (!(error instanceof Error) || !handledErrors.has(error)) await showFailure(error, manual)
+      if (!operationController.signal.aborted) await showFailure(error, manual || interactive)
+    } finally {
+      operationController = undefined
     }
+  }
+
+  function abort() {
+    operationController?.abort()
   }
 
   return {
+    abort,
     check,
-    initialize,
+    initialize: () => supported,
     menuItem,
+    get downloadedPath() { return downloadedPath },
     get state() { return state },
     get supported() { return supported },
   }
 }
-
-export { RELEASES_URL }

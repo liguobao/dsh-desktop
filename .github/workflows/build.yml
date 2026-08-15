@@ -93,9 +93,6 @@ jobs:
             dist/*.AppImage
             dist/*.dmg
             dist/*.exe
-            dist/*.zip
-            dist/latest*.yml
-            dist/*.blockmap
 
   release:
     name: Publish GitHub Release

@@ -15,15 +15,10 @@ test('release builds bundle pnpm for profile plugin management', () => {
   assert.match(packageJson.dependencies.pnpm, /^\d+\.\d+\.\d+$/)
 })
 
-test('release builds generate architecture-specific GitHub update metadata', () => {
-  assert.deepEqual(packageJson.build.publish, {
-    provider: 'github',
-    owner: 'liguobao',
-    repo: 'dsh-desktop',
-    channel: 'latest-${arch}',
-  })
-  assert.deepEqual(packageJson.build.mac.target, ['dmg', 'zip'])
-  assert.match(packageJson.scripts['dist:mac'], /--mac dmg zip/)
+test('release builds publish only user-facing installers', () => {
+  assert.equal(packageJson.build.publish, undefined)
+  assert.deepEqual(packageJson.build.mac.target, ['dmg'])
+  assert.match(packageJson.scripts['dist:mac'], /--mac dmg --publish/)
   assert.equal(packageJson.build.mac.artifactName, 'DSH-Desktop-v${version}-macos-${arch}.${ext}')
-  assert.equal(packageJson.dependencies['electron-updater'], '6.8.9')
+  assert.equal(packageJson.dependencies['electron-updater'], undefined)
 })
