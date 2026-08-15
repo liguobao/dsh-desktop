@@ -23,6 +23,7 @@ import {
 } from './desktop-integration.js'
 import { HarnessServer } from './harness-server.js'
 import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
+import { loadPluginCatalog, normalizePluginSourceUrl } from './plugin-catalog.js'
 import {
   installPlugin as installProfilePlugin,
   readPluginCatalog,
@@ -322,6 +323,14 @@ function installDesktopIpc() {
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
   })
+  ipcMain.handle('dsh-desktop:plugins-discover', async (event) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }
+    try {
+      return { ok: true, ...await loadPluginCatalog() }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
   ipcMain.handle('dsh-desktop:plugins-install', (event, spec, allowBuildScripts = false) => {
     if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }
     return runPluginOperation(signal => installProfilePlugin({
@@ -371,6 +380,15 @@ function installDesktopIpc() {
     if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }
     void shell.openExternal('https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/README.md#profiles')
     return { ok: true }
+  })
+  ipcMain.handle('dsh-desktop:plugins-source', (event, url) => {
+    if (!senderIsPluginManager(event)) return { ok: false, error: 'Untrusted plugin request' }
+    try {
+      void shell.openExternal(normalizePluginSourceUrl(url))
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
   })
   ipcMain.handle('dsh-desktop:skills-list', (event) => {
     if (!senderIsExtensionManager(event) || dshHome === undefined) return { ok: false, error: 'Untrusted skill request' }

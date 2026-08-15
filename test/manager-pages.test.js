@@ -19,6 +19,9 @@ test('plugin and extension managers use separate pages and bridges', () => {
 
   assert.match(pluginPreload, /dshPluginManager/)
   assert.match(pluginPreload, /dsh-desktop:plugins-list/)
+  assert.match(pluginPreload, /dsh-desktop:plugins-discover/)
+  assert.match(pluginPreload, /dsh-desktop:plugins-source/)
+  assert.match(pluginPage, /id="plugin-search"/)
   assert.doesNotMatch(pluginPreload, /dsh-desktop:skills-/)
   assert.match(extensionPreload, /dshExtensionManager/)
   assert.match(extensionPreload, /dsh-desktop:skills-list/)

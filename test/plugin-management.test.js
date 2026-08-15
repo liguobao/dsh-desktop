@@ -93,6 +93,19 @@ test('accepts GitHub repository addresses with optional revisions', () => {
     repository: 'example/dsh-tools',
     ref: '8f90abc',
   })
+  assert.deepEqual(normalizePluginSpec('github:example/dsh-suite#path:/packages/widget'), {
+    spec: 'github:example/dsh-suite#path:/packages/widget',
+    source: 'github',
+    repository: 'example/dsh-suite',
+    path: '/packages/widget',
+  })
+  assert.deepEqual(normalizePluginSpec('github:example/dsh-suite#v1.2.3&path:/packages/widget'), {
+    spec: 'github:example/dsh-suite#v1.2.3&path:/packages/widget',
+    source: 'github',
+    repository: 'example/dsh-suite',
+    ref: 'v1.2.3',
+    path: '/packages/widget',
+  })
   assert.deepEqual(normalizePluginSpec('https://github.com/example/dsh-tools/releases/tag/v2.0.0?source=release'), {
     spec: 'github:example/dsh-tools#v2.0.0',
     source: 'github',
@@ -109,6 +122,7 @@ test('accepts GitHub repository addresses with optional revisions', () => {
   assert.throws(() => normalizePluginSpec('https://github.com/example/dsh-tools/blob/main/package.json'), /repository, commit, or tree/)
   assert.throws(() => normalizePluginSpec('https://github.com/example/dsh-tools/commit/not-a-commit'), /repository, commit, or tree/)
   assert.throws(() => normalizePluginSpec('https://github.com/example/dsh-tools#../main'), /Invalid GitHub revision/)
+  assert.throws(() => normalizePluginSpec('github:example/dsh-suite#path:/packages/../secret'), /Invalid GitHub package path/)
   assert.throws(() => normalizePluginSpec('git@github.com:example/dsh-tools.git'), /npm package name/)
 })
 
@@ -198,19 +212,43 @@ test('installs the latest GitHub tag, optionally permits build scripts, and enab
   assert.equal(catalog.plugins[0].requested, `github:example/dsh-tools#${commit}`)
 })
 
-test('reports a GitHub repository without tags before installing it', async (t) => {
+test('pins an untagged GitHub subdirectory plugin to the default branch commit', async (t) => {
   const dshHome = temporaryDirectory(t)
   const profileDir = join(dshHome, 'profiles', 'web')
-  writeJson(join(profileDir, 'package.json'), {
+  const profileManifest = join(profileDir, 'package.json')
+  const commit = 'abcdef1234567890abcdef1234567890abcdef12'
+  writeJson(profileManifest, {
     name: 'dsh-profile-web', private: true, dependencies: {}, dsh: { profile: { bundles: [] } },
   })
-  await assert.rejects(() => installPlugin({
+  const gitCalls = []
+  const pnpmCalls = []
+  const catalog = await installPlugin({
     dshHome,
     pnpmEntry: '/pnpm.mjs',
-    spec: 'github:example/no-tags',
-    runGitImpl: async () => ({ output: '' }),
-    runPnpmImpl: async () => assert.fail('pnpm should not run without a tag'),
-  }), /has no tags/)
+    spec: 'github:example/no-tags#path:/plugins/widget',
+    runGitImpl: async ({ args }) => {
+      gitCalls.push(args)
+      return { output: args.includes('--tags') ? '' : `${commit}\tHEAD\n` }
+    },
+    runPnpmImpl: async ({ args }) => {
+      pnpmCalls.push(args)
+      const manifest = JSON.parse(readFileSync(profileManifest, 'utf8'))
+      manifest.dependencies['widget-plugin'] = args.at(-1)
+      writeJson(profileManifest, manifest)
+      writeFileSync(join(profileDir, 'pnpm-lock.yaml'), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      widget-plugin:\n        specifier: ${JSON.stringify(args.at(-1))}\n        version: https://codeload.github.com/example/no-tags/tar.gz/${commit}\n`)
+      writeJson(join(profileDir, 'node_modules', 'widget-plugin', 'package.json'), {
+        name: 'widget-plugin', version: '1.0.0', dsh: { bundle: { patch: 'cordis.patch.yml' } },
+      })
+      return { output: '' }
+    },
+  })
+  assert.equal(gitCalls.length, 2)
+  assert.deepEqual(gitCalls[0], ['ls-remote', '--tags', '--refs', '--sort=-version:refname', 'https://github.com/example/no-tags.git'])
+  assert.deepEqual(gitCalls[1], ['ls-remote', '--symref', 'https://github.com/example/no-tags.git', 'HEAD'])
+  assert.equal(pnpmCalls[0].at(-1), `github:example/no-tags#${commit}&path:/plugins/widget`)
+  assert.equal(pnpmCalls[1].at(-1), `github:example/no-tags#${commit}&path:/plugins/widget`)
+  assert.equal(catalog.plugins[0].requested, `github:example/no-tags#${commit}&path:/plugins/widget`)
+  assert.equal(catalog.plugins[0].enabled, true)
 })
 
 test('keeps a GitHub bundle disabled when its required build scripts were not approved', async (t) => {
@@ -329,7 +367,7 @@ test('updates a GitHub plugin from the default branch and preserves its disabled
   writeJson(profileManifest, {
     name: 'dsh-profile-web',
     private: true,
-    dependencies: { '@example/github-plugin': `github:example/dsh-tools#${oldCommit}` },
+    dependencies: { '@example/github-plugin': `github:example/dsh-tools#${oldCommit}&path:/plugins/tool` },
     dsh: { profile: { bundles: [] } },
   })
   writeJson(join(profileDir, 'node_modules', '@example', 'github-plugin', 'package.json'), {
@@ -364,9 +402,9 @@ test('updates a GitHub plugin from the default branch and preserves its disabled
     'ls-remote', '--symref', 'https://github.com/example/dsh-tools.git', 'HEAD',
   ]])
   assert.equal(pnpmCalls.length, 2)
-  assert.equal(pnpmCalls[0].at(-1), `github:example/dsh-tools#${newCommit}`)
+  assert.equal(pnpmCalls[0].at(-1), `github:example/dsh-tools#${newCommit}&path:/plugins/tool`)
   assert.equal(catalog.upToDate, false)
-  assert.equal(catalog.plugins[0].requested, `github:example/dsh-tools#${newCommit}`)
+  assert.equal(catalog.plugins[0].requested, `github:example/dsh-tools#${newCommit}&path:/plugins/tool`)
   assert.equal(catalog.plugins[0].enabled, false)
 
   const unchanged = await updatePlugin({
@@ -486,9 +524,13 @@ test('limits plugin and extension IPC to separate local pages and fixed operatio
   assert.match(main, /managePlugins: '插件安装'/)
   assert.match(main, /manageExtensions: 'Skills管理'/)
   assert.match(main, /dsh-desktop:plugins-update/)
+  assert.match(main, /dsh-desktop:plugins-discover/)
+  assert.match(main, /normalizePluginSourceUrl\(url\)/)
   assert.match(service, /shell: false/)
   assert.match(preload, /dsh-desktop:plugins-install/)
   assert.match(preload, /dsh-desktop:plugins-update/)
+  assert.match(preload, /dsh-desktop:plugins-discover/)
+  assert.match(preload, /dsh-desktop:plugins-source/)
   assert.match(preload, /dsh-desktop:plugins-enabled/)
   assert.match(preload, /dsh-desktop:plugins-remove/)
   assert.doesNotMatch(preload, /dsh-desktop:skills-/)
