@@ -15,9 +15,6 @@
   --danger: #b42335;
   --danger-soft: #fff0f1;
   --success: #157347;
-  --warning-bg: #fff7df;
-  --warning-border: #e7cc7a;
-  --warning-ink: #594613;
 }
 
 * { box-sizing: border-box; }
@@ -38,8 +35,8 @@ main { width: min(900px, calc(100% - 48px)); margin: 0 auto; padding: 30px 0 48p
 .intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: flex-start; gap: 32px; }
 .intro-copy { min-width: 0; }
 h2 { margin: 0; font-size: 23px; line-height: 1.3; letter-spacing: 0; text-wrap: balance; }
+.intro-note { margin: 6px 0 0; color: var(--quiet); font-size: 12px; line-height: 1.45; }
 .summary { padding-top: 4px; color: var(--quiet); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.notice { margin-top: 22px; border: 1px solid var(--warning-border); border-radius: 10px; padding: 12px 14px; color: var(--warning-ink); background: var(--warning-bg); line-height: 1.5; }
 .form-block { margin-top: 24px; }
 .form-block > label { display: block; margin-bottom: 8px; color: var(--ink); font-weight: 600; }
 .form-row { display: flex; gap: 10px; }
@@ -48,9 +45,6 @@ input[type="text"]::placeholder { color: #69768c; opacity: 1; }
 input[type="text"]:hover { border-color: #9ba9bc; }
 input[type="text"]:focus { border-color: var(--accent); outline-offset: 0; }
 .form-hint { margin: 7px 0 0; color: var(--quiet); font-size: 12px; line-height: 1.45; }
-.form-tips { display: grid; gap: 3px; margin-top: 7px; }
-.form-tips .form-hint { margin-top: 0; }
-.form-hint--warning { color: var(--warning-ink); }
 .build-option { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .build-option input { flex: none; margin: 2px 0 0; accent-color: var(--accent); }
 .extension-fields { display: grid; grid-template-columns: minmax(160px, .75fr) minmax(260px, 1.5fr) auto; gap: 10px; }
@@ -115,9 +109,6 @@ input[type="text"]:focus { border-color: var(--accent); outline-offset: 0; }
     --danger: #ff9ba8;
     --danger-soft: #391e25;
     --success: #75d5a4;
-    --warning-bg: #302a18;
-    --warning-border: #6f5f2b;
-    --warning-ink: #f0d98d;
   }
   input[type="text"]::placeholder { color: #9aa8bc; }
   input[type="text"]:hover { border-color: #64738a; }

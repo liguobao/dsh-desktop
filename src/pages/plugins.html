@@ -24,6 +24,7 @@
       <section class="intro" aria-labelledby="page-title">
         <div class="intro-copy">
           <h2 id="page-title">Harness Plugins</h2>
+          <p class="intro-note" id="plugin-trust">Plugins run locally with the same permissions as Harness. Install only code you trust.</p>
         </div>
         <div class="summary" id="plugin-summary" aria-live="polite">Loading…</div>
       </section>
@@ -33,10 +34,7 @@
           <input id="plugin-spec" name="plugin" type="text" maxlength="300" autocomplete="off" spellcheck="false" placeholder="@scope/plugin@version or https://github.com/owner/repo" required>
           <button class="button button--primary" id="plugin-install" type="submit">Install</button>
         </div>
-        <div class="form-tips">
-          <p class="form-hint form-hint--warning" id="plugin-trust">Plugins run locally with the same permissions as Harness. Install only code you trust.</p>
-          <p class="form-hint" id="plugin-install-hint">Supports GitHub repository, commit, and tree URLs. Repository URLs install the latest tag.</p>
-        </div>
+        <p class="form-hint" id="plugin-install-hint">Supports GitHub repository, commit, and tree URLs. Repository URLs install the latest tag.</p>
         <label class="build-option" id="build-option" hidden>
           <input id="allow-build" type="checkbox">
           <span id="allow-build-label">Allow this GitHub package to run install and build scripts. Review its source first.</span>
