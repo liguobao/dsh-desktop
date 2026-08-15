@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Community desktop wrapper for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "src/main.js",
@@ -17,10 +17,10 @@
     "postinstall": "patch-package",
     "start": "electron .",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/desktop-integration.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/plugin-management.js && node --check src/skill-management.js && node --check src/startup-progress.js && node --check src/parent-watch.cjs && node --check src/preload.cjs && node --check src/plugin-preload.cjs && node --check src/extension-preload.cjs && node --check src/pages/manager-ui.js && node --check src/pages/plugins-page.js && node --check src/pages/extensions-page.js && node --check src/plugins/dsh-desktop-integration/lib/index.js && node --check src/plugins/dsh-desktop-integration/lib/client.js",
+    "check": "node --check src/main.js && node --check src/auto-update.js && node --check src/dsh-runtime.js && node --check src/dsh-update.js && node --check src/desktop-integration.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/plugin-management.js && node --check src/skill-management.js && node --check src/startup-progress.js && node --check src/parent-watch.cjs && node --check src/preload.cjs && node --check src/plugin-preload.cjs && node --check src/extension-preload.cjs && node --check src/pages/manager-ui.js && node --check src/pages/plugins-page.js && node --check src/pages/extensions-page.js && node --check src/plugins/dsh-desktop-integration/lib/index.js && node --check src/plugins/dsh-desktop-integration/lib/client.js",
     "dist": "electron-builder --publish never",
     "dist:linux": "electron-builder --linux AppImage --publish never",
-    "dist:mac": "electron-builder --mac dmg --publish never",
+    "dist:mac": "electron-builder --mac dmg zip --publish never",
     "dist:windows": "electron-builder --win --publish never"
   },
   "dependencies": {
@@ -44,7 +44,9 @@
     "@deepseek-ai/dsh-subprocess": "0.1.0-rc.6",
     "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
     "@deepseek-ai/dsh-workflow": "0.1.0-rc.6",
+    "electron-updater": "6.8.9",
     "pnpm": "11.21.0",
+    "semver": "7.7.3",
     "yaml": "2.9.0"
   },
   "devDependencies": {
@@ -67,15 +69,22 @@
     "directories": {
       "output": "dist"
     },
+    "publish": {
+      "provider": "github",
+      "owner": "liguobao",
+      "repo": "dsh-desktop",
+      "channel": "latest-${arch}"
+    },
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.png",
+      "artifactName": "DSH-Desktop-v${version}-macos-${arch}.${ext}",
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ]
     },
     "dmg": {
-      "artifactName": "DSH-Desktop-v${version}-macos-${arch}.${ext}",
       "sign": false
     },
     "win": {

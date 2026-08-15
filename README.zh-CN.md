@@ -4,7 +4,7 @@
 
 一个独立、开源的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 桌面封装。应用会在本机启动内置的 `@deepseek-ai/dsh` Web UI，并通过经过安全限制的 Electron 窗口加载，支持 Linux、macOS 和 Windows。
 
-> DeepSeek Harness 目前仍处于开发者预览阶段，后续可能出现破坏兼容性的变更。DSH Desktop 会固定已经验证的 Harness 版本，确保每个 Release 可以复现。
+> DeepSeek Harness 目前仍处于开发者预览阶段，后续可能出现破坏兼容性的变更。DSH Desktop 会内置经过验证的固定 Harness 版本，既作为可复现的默认运行时，也作为更新失败时的恢复版本。
 
 ## 特性
 
@@ -16,6 +16,8 @@
 - 对话中的文件入口可直接调用 VS Code、Cursor、VSCodium 或 Zed；工作区可从侧栏菜单、会话标题栏或原生菜单交给编辑器和文件管理器打开。
 - 默认关闭 Electron Node 注入，并阻止不可信页面在应用内导航。
 - 使用 GitHub Actions 构建原生安装包和免安装版本。
+- 根据 GitHub Release 的语义化版本 Tag 检查新版本，并在用户确认后安装经过校验的更新。
+- 可以从 npm 独立更新 `@deepseek-ai/dsh`，无需替换整个桌面应用。
 - 同时支持 Intel 与 Apple Silicon Mac。
 
 ## 下载与安装
@@ -30,7 +32,7 @@
 | macOS Intel | `DSH-Desktop-vX.Y.Z-macos-x64.dmg` |
 | Linux x64 | `DSH-Desktop-vX.Y.Z-linux-x64.AppImage` |
 
-每个 Release 会同时提供 Windows 安装版和绿色版。其他平台按架构提供一种推荐安装包，不再发布压缩包或其他 Linux 包格式。
+每个 Release 会同时提供 Windows 安装版和绿色版。其他平台按架构提供一种推荐安装包。Release 中的 macOS ZIP 与更新元数据由应用内更新器使用，不建议手动下载。
 
 当前社区 CI 构建尚未进行商业代码签名，因此 Windows SmartScreen 或 macOS Gatekeeper 可能显示警告。继续运行前建议检查 Release 对应的源码与构建工作流。macOS 请优先使用标准的**按住 Control 点击 → 打开**方式，不要在系统范围关闭 Gatekeeper。
 
@@ -64,7 +66,11 @@ GitHub 插件默认禁用安装和构建脚本，确有需要时可在页面授�
 
 Skills 管理窗口支持创建、导入、定位、启停和删除用户 Skill。Skill 变化不需要重启 Harness。
 
-可以通过**视图 → 重启 Harness**重启本地服务，通过**帮助 → 打开日志目录**查看诊断日志。
+安装版应用会在启动后检查最新的公开 GitHub Release。发现更高版本的 `vX.Y.Z` Tag 后，应用会先询问是否下载，并在安装前再次确认重启。也可以随时通过**帮助 → 检查更新**手动触发。Windows 绿色版以及无法原地更新的包格式会改为打开最新 Release，供用户手动下载。
+
+DSH 本身使用独立的更新通道。应用会比较当前运行的 `@deepseek-ai/dsh` 与 npm `latest` 版本，也可以通过**帮助 → 检查 DSH 更新**手动触发。确认更新后，新版本会安装到应用用户数据下的 `dsh-runtime` 目录，完整校验后才会激活，并自动重启本地 Harness；pnpm 会在安装时校验 npm 包的完整性数据。如果新版运行时无法启动，DSH Desktop 会自动停用它并退回内置版本；也可以通过**帮助 → 恢复内置 DSH**手动回退。
+
+可以通过**视图 → 重启 Harness**重启本地服务，通过**帮助 → 打开日志目录**查看诊断日志。macOS 原地更新要求应用具备 Apple 代码签名；在签名接入前，如果更新器报告签名错误，请改用 Release 中的 DMG 手动更新。
 
 ## 工作原理
 
@@ -84,7 +90,7 @@ DSH Desktop
    └─ $DSH_HOME/skills
 ```
 
-桌面能力由本仓库内的独立双端插件 `@dsh-desktop/integration` 提供。启动时应用只把该插件复制到 `$DSH_HOME/profiles/node_modules` 的上游扩展解析目录，再用一次性 `--patch` 加载；不会修改 `@deepseek-ai/dsh` 的 CLI 源码、安装包或用户的 `cordis.patch.yml`。
+桌面能力由本仓库内的独立双端插件 `@dsh-desktop/integration` 提供。启动时应用只把该插件复制到 `$DSH_HOME/profiles/node_modules` 的上游扩展解析目录，再用一次性 `--patch` 加载；不会修改内置的 `@deepseek-ai/dsh` CLI、外部 DSH 安装或用户的 `cordis.patch.yml`。可选的 DSH 在线更新只保存在应用自己的用户数据运行时中。
 
 应用从官方 `dsh web` 的就绪输出中读取实际 URL。只有该本地回环 Origin 可以留在应用窗口中，普通 HTTP/HTTPS 外链会交给系统浏览器。退出应用时会同时终止本地 Harness 进程树。
 
@@ -124,6 +130,8 @@ git commit -am "release: v0.1.1"
 git tag -a v0.1.1 -m "DSH Desktop v0.1.1"
 git push origin HEAD --follow-tags
 ```
+
+Tag 必须严格等于 `v` 加 `package.json` 中的版本号。各架构会分别发布更新清单与校验数据；Tag 与包版本不一致时，工作流会在构建前直接失败。
 
 当前工作流不会保存任何签名身份。维护者后续可以加入 Apple 签名与公证、Windows 代码签名，而不需要调整应用架构。
 

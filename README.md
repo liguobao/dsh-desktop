@@ -4,7 +4,7 @@
 
 An independent, open-source desktop wrapper for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It starts the bundled `@deepseek-ai/dsh` Web UI locally and loads it in a hardened Electron window on Linux, macOS, and Windows.
 
-> DeepSeek Harness is currently a developer preview and may introduce breaking changes. DSH Desktop pins a tested Harness version so releases remain reproducible.
+> DeepSeek Harness is currently a developer preview and may introduce breaking changes. DSH Desktop ships a tested, pinned Harness version as its reproducible default and recovery fallback.
 
 ## Highlights
 
@@ -16,6 +16,8 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 - Opens conversation files in VS Code, Cursor, VSCodium, or Zed, with workspace actions in the sidebar, session header, and native menu.
 - Keeps Electron's Node integration disabled and blocks untrusted in-app navigation.
 - Includes native installers and portable packages built by GitHub Actions.
+- Checks GitHub Releases for newer semantic-version tags and installs verified updates with user confirmation.
+- Can update `@deepseek-ai/dsh` independently from npm without replacing the desktop application.
 - Supports both Intel and Apple Silicon macOS systems.
 
 ## Download
@@ -30,7 +32,7 @@ Download the latest package from [GitHub Releases](https://github.com/liguobao/d
 | macOS Intel | `DSH-Desktop-vX.Y.Z-macos-x64.dmg` |
 | Linux x64 | `DSH-Desktop-vX.Y.Z-linux-x64.AppImage` |
 
-Each release provides both installer and portable editions for Windows. Other platforms provide one recommended package per architecture; archive and alternative Linux formats are not published.
+Each release provides both installer and portable editions for Windows. Other platforms provide one recommended package per architecture. The macOS ZIP files and update metadata in a Release are consumed by the in-app updater and are not intended as manual downloads.
 
 The community CI builds are currently unsigned. Windows SmartScreen and macOS Gatekeeper may therefore show a warning. Review the release source and workflow before choosing to continue. On macOS, prefer the standard **Control-click → Open** flow instead of disabling Gatekeeper globally.
 
@@ -64,7 +66,11 @@ GitHub install and build scripts are disabled by default and can be explicitly a
 
 Skills Management can create, import, reveal, enable, disable, and delete user Skills. Skill changes do not require a Harness restart.
 
-The **View → Restart Harness** command restarts the local service. Diagnostic output is available through **Help → Open Logs Folder**.
+The installed application checks the latest public GitHub Release shortly after startup. When a newer `vX.Y.Z` tag is available, it asks before downloading and again before restarting to install it. You can also use **Help → Check for Updates** at any time. Windows portable builds and package formats that cannot update in place open the latest Release for a manual download.
+
+DSH itself has a separate update channel. The app compares the running `@deepseek-ai/dsh` version with npm's `latest` tag and offers **Help → Check for DSH Updates**. An accepted version is installed in the app's user-data `dsh-runtime` directory, verified before activation, and then the local Harness restarts. The registry-provided package integrity hash is checked by pnpm during installation. If the new runtime cannot start, DSH Desktop automatically deactivates it and returns to the bundled version. **Help → Restore Bundled DSH** provides the same rollback manually.
+
+The **View → Restart Harness** command restarts the local service. Diagnostic output is available through **Help → Open Logs Folder**. macOS in-place updates require an Apple-signed application; until signing is configured, use the Release DMG when the updater reports a signature error.
 
 ## How it works
 
@@ -84,7 +90,7 @@ DSH Desktop
    └─ $DSH_HOME/skills
 ```
 
-Desktop capabilities come from the standalone dual-face `@dsh-desktop/integration` package in this repository. At startup, the app copies only that package into the upstream `$DSH_HOME/profiles/node_modules` extension-resolution directory and loads it with a one-off `--patch`. It does not modify the `@deepseek-ai/dsh` CLI source, installation, or the user's `cordis.patch.yml`.
+Desktop capabilities come from the standalone dual-face `@dsh-desktop/integration` package in this repository. At startup, the app copies only that package into the upstream `$DSH_HOME/profiles/node_modules` extension-resolution directory and loads it with a one-off `--patch`. It does not modify the bundled `@deepseek-ai/dsh` CLI, an external DSH installation, or the user's `cordis.patch.yml`; optional DSH updates live in the app-owned user-data runtime instead.
 
 The readiness URL is read from the official `dsh web` output. Only that exact loopback origin is allowed to remain inside the app; regular HTTP and HTTPS links open in the system browser. Closing the app terminates the local Harness process tree.
 
@@ -124,6 +130,8 @@ git commit -am "release: v0.1.1"
 git tag -a v0.1.1 -m "DSH Desktop v0.1.1"
 git push origin HEAD --follow-tags
 ```
+
+The tag must be exactly `v` followed by the version in `package.json`. Each architecture publishes a separate update manifest plus its checksum data; the workflow rejects a mismatched tag before building.
 
 The workflow intentionally does not contain signing identities. Maintainers can add Apple signing/notarization and Windows code-signing secrets later without changing the application architecture.
 
