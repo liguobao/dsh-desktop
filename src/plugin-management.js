@@ -14,6 +14,13 @@ export const MAX_PLUGIN_SPEC_LENGTH = 300
 export const MAX_PLUGIN_OUTPUT_LENGTH = 64 * 1024
 export const SYSTEM_BUNDLES = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
 const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
+const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
+
+/** Bundled plugins installed automatically on a fresh profile. GitHub specs update online. */
+export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote']
+
+const PROFILE_SYSTEM_BUNDLES = { web: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] }
+const PROFILE_PNPM_WORKSPACE = 'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n'
 
 const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/i
 const PACKAGE_SELECTOR_PATTERN = /^[a-z0-9~^*<>=|+_.-]+$/i
@@ -65,6 +72,29 @@ function forgetPluginInstallHistory(profileDir, name) {
   writeJsonAtomic(join(profileDir, PLUGIN_INSTALL_HISTORY), { version: 1, installedAt })
 }
 
+function readDefaultPluginState(profileDir) {
+  try {
+    const value = readJson(join(profileDir, DEFAULT_PLUGIN_STATE))
+    if (value?.version !== 1 || !Array.isArray(value.seen)) return { version: 1, seen: [] }
+    return {
+      version: 1,
+      seen: value.seen.filter(key => typeof key === 'string' && key.length > 0 && key.length <= MAX_PLUGIN_SPEC_LENGTH),
+    }
+  } catch {
+    return { version: 1, seen: [] }
+  }
+}
+
+function writeDefaultPluginState(profileDir, state) {
+  writeJsonAtomic(join(profileDir, DEFAULT_PLUGIN_STATE), state)
+}
+
+function defaultPluginKey(normalized) {
+  return normalized.source === 'github'
+    ? `github:${normalized.repository.toLowerCase()}${normalized.path === undefined ? '' : `#path:${normalized.path}`}`
+    : `npm:${normalized.packageName}`
+}
+
 function packageManifestPath(profileDir, packageName) {
   return join(profileDir, 'node_modules', ...packageName.split('/'), 'package.json')
 }
@@ -106,6 +136,29 @@ function pluginMetadata(profileDir, packageName, requested, enabled, installedAt
 
 export function profileDirectory(dshHome, profile = PLUGIN_PROFILE) {
   return join(dshHome, 'profiles', profile)
+}
+
+/**
+ * Initialize a profile directory the same way the Harness does before its
+ * first boot, so default plugins can install into a well-formed profile.
+ * Existing files are never touched, so this is a no-op on an initialized
+ * profile and never overrides a user-owned manifest.
+ */
+export function ensureProfileInitialized(dshHome, profile = PLUGIN_PROFILE) {
+  const profileDir = profileDirectory(dshHome, profile)
+  mkdirSync(profileDir, { recursive: true })
+  const manifestPath = join(profileDir, 'package.json')
+  if (!existsSync(manifestPath)) {
+    writeJsonAtomic(manifestPath, {
+      name: `dsh-profile-${profile}`,
+      private: true,
+      dependencies: {},
+      dsh: { profile: { bundles: [...(PROFILE_SYSTEM_BUNDLES[profile] ?? ['@deepseek-ai/dsh-base'])] } },
+    })
+  }
+  const workspacePath = join(profileDir, 'pnpm-workspace.yaml')
+  if (!existsSync(workspacePath)) writeTextAtomic(workspacePath, PROFILE_PNPM_WORKSPACE)
+  return profileDir
 }
 
 function normalizeGitHubRef(value) {
@@ -682,4 +735,57 @@ export async function removePlugin({
   forgetPluginBundle({ dshHome, name, profile })
   forgetPluginInstallHistory(catalog.profileDir, name)
   return readPluginCatalog({ dshHome, profile })
+}
+
+/**
+ * Install any bundled default plugin that is missing from the profile, exactly
+ * once per default. A per-profile marker records defaults that were already
+ * handled so a user can uninstall a default without it returning on the next
+ * launch. Install failures leave the marker untouched and are retried later.
+ */
+export async function ensureDefaultPlugins({
+  dshHome,
+  pnpmEntry,
+  execPath,
+  env,
+  onOutput,
+  signal,
+  profile = PLUGIN_PROFILE,
+  runGitImpl = runGit,
+  runPnpmImpl = runPnpm,
+  defaults = DEFAULT_PLUGINS,
+}) {
+  if (!Array.isArray(defaults)) throw new Error('Invalid default plugin list')
+  const profileDir = ensureProfileInitialized(dshHome, profile)
+  const seen = new Set(readDefaultPluginState(profileDir).seen)
+  const installed = []
+  for (const spec of defaults) {
+    if (typeof spec !== 'string' || spec.trim() === '') continue
+    const normalized = normalizePluginSpec(spec)
+    const key = defaultPluginKey(normalized)
+    if (seen.has(key)) continue
+    const catalog = readPluginCatalog({ dshHome, profile })
+    const alreadyInstalled = catalog.plugins.some(plugin => plugin.installed && (
+      normalized.source === 'github' ? pluginUsesGitHubSource(plugin, normalized) : plugin.name === normalized.packageName
+    ))
+    if (!alreadyInstalled) {
+      await installPlugin({
+        dshHome,
+        pnpmEntry,
+        spec,
+        allowBuildScripts: false,
+        execPath,
+        env,
+        onOutput,
+        signal,
+        profile,
+        runGitImpl,
+        runPnpmImpl,
+      })
+      installed.push(key)
+    }
+    seen.add(key)
+    writeDefaultPluginState(profileDir, { version: 1, seen: [...seen] })
+  }
+  return { ...readPluginCatalog({ dshHome, profile }), installed }
 }

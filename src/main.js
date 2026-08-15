@@ -24,6 +24,7 @@ import { HarnessServer } from './harness-server.js'
 import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
 import { loadPluginCatalog, normalizePluginSourceUrl } from './plugin-catalog.js'
 import {
+  ensureDefaultPlugins,
   installPlugin as installProfilePlugin,
   readPluginCatalog,
   removePlugin as removeProfilePlugin,
@@ -120,6 +121,7 @@ let desktopIpcInstalled = false
 let dshHome
 let pluginOperationRunning = false
 let pluginOperationController
+let defaultPluginInstallController
 let updateController
 let updateCheckTimer
 let dshRuntimeRoot
@@ -407,6 +409,33 @@ function resolvePnpmEntry() {
   const entry = join(dirname(manifest), 'bin', 'pnpm.mjs')
   if (!existsSync(entry)) throw new Error(`Bundled pnpm entry point is missing: ${entry}`)
   return entry
+}
+
+async function installDefaultPlugins() {
+  if (dshHome === undefined) return
+  const controller = new AbortController()
+  defaultPluginInstallController = controller
+  const timer = setTimeout(() => controller.abort(new Error('Default plugin install timed out')), 90_000)
+  timer.unref?.()
+  try {
+    const result = await ensureDefaultPlugins({
+      dshHome,
+      pnpmEntry: resolvePnpmEntry(),
+      execPath: process.execPath,
+      env: process.env,
+      onOutput: writeLog,
+      signal: controller.signal,
+    })
+    if (result.installed.length > 0) {
+      writeLog('desktop', `Installed default plugins: ${result.installed.join(', ')}.\n`)
+    }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    writeLog('stderr', `Default plugin install failed: ${detail}\n`)
+  } finally {
+    if (defaultPluginInstallController === controller) defaultPluginInstallController = undefined
+    clearTimeout(timer)
+  }
 }
 
 function pagePath(name) {
@@ -841,10 +870,12 @@ if (!hasLock) {
     editorPreference = normalizeEditorPreference(readDesktopSettings(desktopSettingsPath).editor, editors)
     writeLog('desktop', `Detected editors: ${editors.map(editor => editor.id).join(', ') || 'none'}.\n`)
     installDesktopIpc()
+    splashWindow = createSplashWindow()
+    await showLoading(copy.preparing, 8, restartGeneration)
+    await installDefaultPlugins()
     initializeAutoUpdates()
     initializeDshUpdates()
     buildMenu()
-    splashWindow = createSplashWindow()
     void startHarness()
   }).catch((error) => {
     dialog.showErrorBox(copy.startupFailed, error instanceof Error ? error.stack ?? error.message : String(error))
@@ -864,6 +895,7 @@ if (!hasLock) {
     quitting = true
     restartGeneration += 1
     pluginOperationController?.abort()
+    defaultPluginInstallController?.abort()
     updateController?.abort()
     dshUpdateController?.abort()
     if (updateCheckTimer !== undefined) clearTimeout(updateCheckTimer)

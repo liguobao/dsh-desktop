@@ -6,6 +6,8 @@ import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import test from 'node:test'
 import {
+  ensureDefaultPlugins,
+  ensureProfileInitialized,
   installPlugin,
   normalizePluginSpec,
   readPluginCatalog,
@@ -508,6 +510,98 @@ test('queries GitHub refs through git without a shell or credential prompts', as
   assert.equal(invocation.options.shell, false)
   assert.equal(invocation.options.env.GIT_TERMINAL_PROMPT, '0')
   assert.equal(invocation.options.env.GCM_INTERACTIVE, 'Never')
+})
+
+test('initializes a fresh profile with system bundles without overwriting user files', (t) => {
+  const dshHome = temporaryDirectory(t)
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const profileManifest = join(profileDir, 'package.json')
+
+  ensureProfileInitialized(dshHome)
+  const manifest = JSON.parse(readFileSync(profileManifest, 'utf8'))
+  assert.equal(manifest.name, 'dsh-profile-web')
+  assert.equal(manifest.private, true)
+  assert.deepEqual(manifest.dependencies, {})
+  assert.deepEqual(manifest.dsh.profile.bundles, ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
+  assert.match(readFileSync(join(profileDir, 'pnpm-workspace.yaml'), 'utf8'), /nodeLinker: hoisted/)
+
+  // A user-owned manifest is left untouched.
+  const custom = { name: 'custom', dependencies: { '@example/plugin': '1.0.0' }, dsh: { profile: { bundles: ['@example/plugin'] } } }
+  writeJson(profileManifest, custom)
+  ensureProfileInitialized(dshHome)
+  assert.deepEqual(JSON.parse(readFileSync(profileManifest, 'utf8')), custom)
+})
+
+test('installs a bundled default GitHub plugin once and records the marker', async (t) => {
+  const dshHome = temporaryDirectory(t)
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const profileManifest = join(profileDir, 'package.json')
+  const commit = '1234567890abcdef1234567890abcdef12345678'
+  writeJson(profileManifest, {
+    name: 'dsh-profile-web', private: true, dependencies: {}, dsh: { profile: { bundles: [] } },
+  })
+  const pnpmCalls = []
+  const runPnpmImpl = async ({ args }) => {
+    pnpmCalls.push(args)
+    const manifest = JSON.parse(readFileSync(profileManifest, 'utf8'))
+    manifest.dependencies['dsh-remote'] = args.at(-1)
+    writeJson(profileManifest, manifest)
+    writeJson(join(profileDir, 'node_modules', 'dsh-remote', 'package.json'), {
+      name: 'dsh-remote', version: '0.2.11', dsh: { bundle: { patch: 'cordis.patch.yml' } },
+    })
+    writeFileSync(join(profileDir, 'pnpm-lock.yaml'), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      dsh-remote:\n        specifier: ${JSON.stringify(args.at(-1))}\n        version: https://codeload.github.com/liguobao/deepseek-harness-remote/tar.gz/${commit}\n`)
+    return { output: '' }
+  }
+  const options = {
+    dshHome,
+    pnpmEntry: '/pnpm.mjs',
+    defaults: ['github:liguobao/deepseek-harness-remote#v0.2.11'],
+    runPnpmImpl,
+  }
+
+  const first = await ensureDefaultPlugins(options)
+  assert.deepEqual(first.installed, ['github:liguobao/deepseek-harness-remote'])
+  assert.equal(pnpmCalls.length, 2)
+  assert.equal(first.plugins[0].name, 'dsh-remote')
+  assert.equal(first.plugins[0].source, 'github')
+  assert.equal(first.plugins[0].enabled, true)
+
+  const second = await ensureDefaultPlugins(options)
+  assert.deepEqual(second.installed, [])
+  assert.equal(pnpmCalls.length, 2)
+})
+
+test('keeps a removed default plugin from returning on the next launch', async (t) => {
+  const dshHome = temporaryDirectory(t)
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const profileManifest = join(profileDir, 'package.json')
+  writeJson(profileManifest, {
+    name: 'dsh-profile-web',
+    private: true,
+    dependencies: { 'dsh-remote': 'github:liguobao/deepseek-harness-remote#v0.2.11' },
+    dsh: { profile: { bundles: ['dsh-remote'] } },
+  })
+  writeJson(join(profileDir, 'node_modules', 'dsh-remote', 'package.json'), {
+    name: 'dsh-remote', version: '0.2.11', dsh: { bundle: { patch: 'cordis.patch.yml' } },
+  })
+  writeJson(join(profileDir, '.dsh-desktop-default-plugins.json'), {
+    version: 1, seen: ['github:liguobao/deepseek-harness-remote'],
+  })
+
+  // The user uninstalls the default plugin.
+  const manifest = JSON.parse(readFileSync(profileManifest, 'utf8'))
+  delete manifest.dependencies['dsh-remote']
+  manifest.dsh.profile.bundles = []
+  writeJson(profileManifest, manifest)
+
+  const result = await ensureDefaultPlugins({
+    dshHome,
+    pnpmEntry: '/pnpm.mjs',
+    defaults: ['github:liguobao/deepseek-harness-remote#v0.2.11'],
+    runPnpmImpl: async () => assert.fail('pnpm should not run for a seen default'),
+  })
+  assert.deepEqual(result.installed, [])
+  assert.deepEqual(result.plugins, [])
 })
 
 test('limits plugin IPC to the local plugin page and fixed operations', () => {
