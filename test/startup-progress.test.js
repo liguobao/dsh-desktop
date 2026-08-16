@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 import { loadingStateScript, normalizeProgress } from '../src/startup-progress.js'
@@ -20,4 +21,15 @@ test('serializes startup state as data when evaluated', () => {
   })
   assert.equal(received.message, '</script><script>alert(1)</script>')
   assert.equal(received.progress, 42)
+})
+
+test('default plugin installation runs only after Harness startup completes', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8')
+  const readyHandler = source.slice(source.indexOf('app.whenReady().then'))
+  const start = readyHandler.indexOf('startHarness().then')
+  const install = readyHandler.indexOf('if (started) void installDefaultPlugins()')
+
+  assert.ok(start >= 0)
+  assert.ok(install > start)
+  assert.doesNotMatch(readyHandler.slice(0, start), /await installDefaultPlugins\(\)/)
 })

@@ -872,11 +872,15 @@ if (!hasLock) {
     installDesktopIpc()
     splashWindow = createSplashWindow()
     await showLoading(copy.preparing, 8, restartGeneration)
-    await installDefaultPlugins()
     initializeAutoUpdates()
     initializeDshUpdates()
     buildMenu()
-    void startHarness()
+    void startHarness().then(started => {
+      // A default plugin may require GitHub and pnpm network access. Keep that
+      // work out of the critical startup path so an unavailable registry or
+      // repository can never hold the splash screen at its initial 8% state.
+      if (started) void installDefaultPlugins()
+    })
   }).catch((error) => {
     dialog.showErrorBox(copy.startupFailed, error instanceof Error ? error.stack ?? error.message : String(error))
     app.quit()
