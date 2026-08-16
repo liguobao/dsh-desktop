@@ -42,6 +42,8 @@
 xattr -dr com.apple.quarantine "/Applications/DSH Desktop.app"
 ```
 
+安装包（DMG）内附带了 `安装说明.txt`，打开即可看到完整步骤，并可直接选中复制上面这条命令。
+
 运行 AppImage：
 
 ```bash

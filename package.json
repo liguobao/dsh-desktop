@@ -78,7 +78,12 @@
       ]
     },
     "dmg": {
-      "sign": false
+      "sign": false,
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 270, "y": 220, "type": "file", "path": "build/macos-install-notes.txt", "name": "安装说明.txt" },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
     },
     "win": {
       "icon": "build/icon.ico",

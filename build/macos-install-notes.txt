@@ -1,0 +1,30 @@
+DSH Desktop macOS 安装说明 / macOS Installation Notes
+=====================================================
+
+[中文]
+1. 把 DSH Desktop.app 拖入 Applications 文件夹。
+2. 首次打开时，如果 macOS 提示“无法验证开发者”或“应用已损坏”，
+   请打开“终端”(Terminal)，运行下面这一行命令，然后重新打开应用：
+
+   xattr -dr com.apple.quarantine "/Applications/DSH Desktop.app"
+
+说明：
+- 这条命令只清除 DSH Desktop 自身的隔离属性，不会关闭系统 Gatekeeper 保护。
+- 请确认安装包来自官方 GitHub Release，再继续运行。
+- 也可以改用系统支持的“按住 Control 点击应用 → 打开”方式。
+
+-----------------------------------------------------
+
+[English]
+1. Drag DSH Desktop.app into the Applications folder.
+2. If macOS says the app “cannot be opened because the developer cannot be
+   verified” or “is damaged”, open Terminal, run the single line below, and
+   reopen the app:
+
+   xattr -dr com.apple.quarantine "/Applications/DSH Desktop.app"
+
+Notes:
+- This only clears the quarantine attribute for DSH Desktop itself;
+  Gatekeeper stays fully enabled.
+- Make sure the installer came from an official GitHub Release.
+- Alternatively, use “Control-click the app → Open”.

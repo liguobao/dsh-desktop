@@ -42,6 +42,8 @@ If macOS still reports that the app is damaged or cannot verify its developer, f
 xattr -dr com.apple.quarantine "/Applications/DSH Desktop.app"
 ```
 
+The DMG includes a `安装说明.txt` file: open it to see the full steps and select/copy the command above directly.
+
 For an AppImage:
 
 ```bash
