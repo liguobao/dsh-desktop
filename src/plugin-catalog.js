@@ -6,6 +6,7 @@ export const PLUGIN_TOPIC_URL = 'https://github.com/topics/dsh-plugin'
 export const PLUGIN_REGISTRY_URL = 'https://awesome-dsh-plugin.com/plugins.json'
 export const MAX_PLUGIN_CATALOG_BYTES = 2 * 1024 * 1024
 export const MAX_PLUGIN_CATALOG_ENTRIES = 5_000
+const EXTRA_CATALOG_PATH = join(import.meta.dirname, 'plugin-catalog.extra.json')
 
 const INSTALL_PREFIX = 'dsh plugin --profile web add '
 const GITHUB_OWNER_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,38})$/i
@@ -147,13 +148,36 @@ export function readBundledPluginCatalog(path = join(import.meta.dirname, 'plugi
   return normalizePluginCatalog(JSON.parse(readFileSync(path, 'utf8')))
 }
 
+/** Local extra entries (see plugin-catalog.extra.json) merged on top of any loaded catalog. */
+export function readExtraPluginEntries(path = EXTRA_CATALOG_PATH) {
+  let parsed
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf8'))
+  } catch (error) {
+    if (error?.code === 'ENOENT') return []
+    throw error
+  }
+  const plugins = Array.isArray(parsed) ? parsed : parsed?.plugins
+  if (!Array.isArray(plugins)) throw new Error('Invalid extra plugin catalog')
+  return plugins
+}
+
+function withLocalEntries(registry, extras) {
+  const plugins = Array.isArray(registry?.plugins) ? registry.plugins : []
+  return { ...registry, plugins: [...plugins, ...extras] }
+}
+
 export async function loadPluginCatalog({
   fetchImpl = globalThis.fetch,
   bundledPath,
+  extraPath,
   signal,
   timeoutMs = 10_000,
 } = {}) {
   const fallback = readBundledPluginCatalog(bundledPath)
+  // Local extra entries (e.g. plugins not yet collected by the upstream
+  // registry) are merged on top of whatever catalog loads, online or bundled.
+  let extras = []
   const controller = new AbortController()
   const abort = () => controller.abort(signal?.reason)
   signal?.addEventListener('abort', abort, { once: true })
@@ -161,6 +185,7 @@ export async function loadPluginCatalog({
   const timer = setTimeout(() => controller.abort(new Error('Plugin catalog request timed out')), timeoutMs)
   timer.unref?.()
   try {
+    extras = readExtraPluginEntries(extraPath)
     const response = await fetchImpl(PLUGIN_REGISTRY_URL, {
       headers: { accept: 'application/json', 'user-agent': 'dsh-desktop-plugin-catalog' },
       redirect: 'error',
@@ -173,12 +198,17 @@ export async function loadPluginCatalog({
     }
     const text = await response.text()
     if (Buffer.byteLength(text, 'utf8') > MAX_PLUGIN_CATALOG_BYTES) throw new Error('Plugin catalog response is too large')
-    return { catalog: normalizePluginCatalog(JSON.parse(text)), online: true }
+    return {
+      catalog: normalizePluginCatalog(withLocalEntries(JSON.parse(text), extras)),
+      online: true,
+      local: extras.length,
+    }
   } catch (error) {
     return {
-      catalog: fallback,
+      catalog: normalizePluginCatalog(withLocalEntries(fallback, extras)),
       online: false,
       error: error instanceof Error ? error.message : String(error),
+      local: extras.length,
     }
   } finally {
     clearTimeout(timer)
