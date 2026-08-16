@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   MAX_PLUGIN_CATALOG_BYTES,
   PLUGIN_REGISTRY_URL,
@@ -8,8 +9,18 @@ import {
   normalizePluginCatalog,
 } from '../src/plugin-catalog.js'
 
+const scriptDir = dirname(fileURLToPath(import.meta.url))
 const outputPath = resolve(process.argv[2] ?? 'src/plugin-catalog.json')
+const extraPath = resolve(process.argv[3] ?? join(scriptDir, '..', 'src', 'plugin-catalog.extra.json'))
 const headers = { 'user-agent': 'dsh-desktop-plugin-catalog-generator' }
+
+/** Local entries merged on top of the online registry. */
+function readExtraPlugins(path) {
+  const parsed = JSON.parse(readFileSync(path, 'utf8'))
+  const plugins = Array.isArray(parsed) ? parsed : parsed?.plugins
+  if (!Array.isArray(plugins)) throw new Error(`Extra plugin entries in ${path} must be an array or { plugins: [...] }`)
+  return plugins
+}
 
 async function download(url, accept) {
   const response = await fetch(url, { headers: { ...headers, accept }, redirect: 'error' })
@@ -25,6 +36,9 @@ if (!topicHtml.includes('<title>dsh-plugin · GitHub Topics · GitHub')) {
 }
 
 const registryText = await download(PLUGIN_REGISTRY_URL, 'application/json')
-const catalog = normalizePluginCatalog(JSON.parse(registryText), { generatedAt: new Date().toISOString() })
+const registry = JSON.parse(registryText)
+const extraPlugins = readExtraPlugins(extraPath)
+registry.plugins = [...(Array.isArray(registry.plugins) ? registry.plugins : []), ...extraPlugins]
+const catalog = normalizePluginCatalog(registry, { generatedAt: new Date().toISOString() })
 writeFileSync(outputPath, `${JSON.stringify(catalog, undefined, 2)}\n`)
-console.log(`Wrote ${String(catalog.count)} installable plugins to ${outputPath}`)
+console.log(`Wrote ${String(catalog.count)} installable plugins (${extraPlugins.length} local entries) to ${outputPath}`)

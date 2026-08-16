@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -92,4 +92,17 @@ test('bundled catalog is populated and source links stay on GitHub', () => {
   assert.equal(normalizePluginSourceUrl('https://github.com/example/plugin/tree/main'), 'https://github.com/example/plugin/tree/main')
   assert.throws(() => normalizePluginSourceUrl('https://example.com/example/plugin'), /GitHub repositories/)
   assert.throws(() => normalizePluginSourceUrl('javascript:alert(1)'), /GitHub repositories/)
+})
+
+test('bundled catalog carries the local extra entries', () => {
+  const extra = JSON.parse(readFileSync(new URL('../src/plugin-catalog.extra.json', import.meta.url), 'utf8'))
+  assert.ok(Array.isArray(extra.plugins), 'extra entries should be an array of registry-style entries')
+  const catalog = readBundledPluginCatalog()
+  for (const entry of extra.plugins) {
+    const url = new URL(entry.url)
+    const repository = url.pathname.split('/').filter(Boolean).slice(0, 2).join('/')
+    const plugin = catalog.plugins.find((p) => p.repository.toLowerCase() === repository.toLowerCase())
+    assert.ok(plugin, `bundled catalog should contain local extra entry ${repository}`)
+    assert.equal(plugin.source, 'github')
+  }
 })

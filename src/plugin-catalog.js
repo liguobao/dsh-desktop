@@ -5,7 +5,7 @@ import { normalizePluginSpec } from './plugin-management.js'
 export const PLUGIN_TOPIC_URL = 'https://github.com/topics/dsh-plugin'
 export const PLUGIN_REGISTRY_URL = 'https://awesome-dsh-plugin.com/plugins.json'
 export const MAX_PLUGIN_CATALOG_BYTES = 2 * 1024 * 1024
-export const MAX_PLUGIN_CATALOG_ENTRIES = 1_000
+export const MAX_PLUGIN_CATALOG_ENTRIES = 5_000
 
 const INSTALL_PREFIX = 'dsh plugin --profile web add '
 const GITHUB_OWNER_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,38})$/i
