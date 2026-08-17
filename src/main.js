@@ -182,7 +182,7 @@ function initializeDshUpdates() {
     runtimeRoot: dshRuntimeRoot,
     pnpmEntry: resolvePnpmEntry(),
     execPath: process.execPath,
-    env: process.env,
+    env: harnessEnv,
     isChinese,
     dialog,
     getWindow: () => mainWindow,
@@ -311,6 +311,8 @@ function installDesktopIpc() {
     return runPluginOperation(signal => installProfilePlugin({
       dshHome,
       pnpmEntry: resolvePnpmEntry(),
+      execPath: process.execPath,
+      env: harnessEnv,
       spec,
       allowBuildScripts,
       onOutput: writeLog,
@@ -331,6 +333,8 @@ function installDesktopIpc() {
     return runPluginOperation(signal => updateProfilePlugin({
       dshHome,
       pnpmEntry: resolvePnpmEntry(),
+      execPath: process.execPath,
+      env: harnessEnv,
       name,
       onOutput: writeLog,
       signal,
@@ -341,6 +345,8 @@ function installDesktopIpc() {
     return runPluginOperation(signal => removeProfilePlugin({
       dshHome,
       pnpmEntry: resolvePnpmEntry(),
+      execPath: process.execPath,
+      env: harnessEnv,
       name,
       onOutput: writeLog,
       signal,
@@ -427,7 +433,7 @@ async function installDefaultPlugins() {
       dshHome,
       pnpmEntry: resolvePnpmEntry(),
       execPath: process.execPath,
-      env: process.env,
+      env: harnessEnv,
       onOutput: writeLog,
       signal: controller.signal,
     })
