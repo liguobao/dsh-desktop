@@ -33,3 +33,15 @@ test('default plugin installation runs only after Harness startup completes', ()
   assert.ok(install > start)
   assert.doesNotMatch(readyHandler.slice(0, start), /await installDefaultPlugins\(\)/)
 })
+
+test('bundled plugins are prepared locally after the splash appears and before Harness starts', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8')
+  const readyHandler = source.slice(source.indexOf('app.whenReady().then'))
+  const splash = readyHandler.indexOf('await showLoading(copy.preparing')
+  const bundled = readyHandler.indexOf('await installBundledRemotePlugin')
+  const start = readyHandler.indexOf('startHarness().then')
+
+  assert.ok(splash >= 0)
+  assert.ok(bundled > splash)
+  assert.ok(start > bundled)
+})
