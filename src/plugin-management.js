@@ -6,7 +6,7 @@ import {
   renameSync,
   writeFileSync,
 } from 'node:fs'
-import { cp } from 'node:fs/promises'
+import { cp, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { parse, stringify } from 'yaml'
 
@@ -19,7 +19,10 @@ const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
 /** Bundled plugins installed automatically on a fresh profile. GitHub specs update online. */
 export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote']
-export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#633bf08f9bac174fc6dbe37738786ebb83421c24'
+export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#3a271eaeaa649647ec27e137fb7321526799a749'
+const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
+  'github:liguobao/deepseek-harness-remote#633bf08f9bac174fc6dbe37738786ebb83421c24',
+])
 
 const PROFILE_SYSTEM_BUNDLES = { web: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] }
 const PROFILE_PNPM_WORKSPACE = 'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n'
@@ -209,10 +212,9 @@ export async function installBundledRemotePlugin({
   const targetPlugin = join(profileDir, 'node_modules', 'dsh-remote')
   const declared = Object.hasOwn(profileManifest.dependencies ?? {}, 'dsh-remote')
   if (declared && existsSync(join(targetPlugin, 'package.json'))) {
-    return targetPlugin
+    if (!LEGACY_BUNDLED_REMOTE_SPECS.has(profileManifest.dependencies['dsh-remote'])) return targetPlugin
+    await rm(targetPlugin, { recursive: true, force: true })
   }
-  const defaultKey = defaultPluginKey(normalizePluginSpec(spec))
-  if (!declared && new Set(readDefaultPluginState(profileDir).seen).has(defaultKey)) return undefined
   if (!existsSync(join(targetPlugin, 'package.json'))) {
     for (const [name, directory] of bundledDependencyClosure(sourceDir)) {
       const target = join(profileDir, 'node_modules', ...name.split('/'))

@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { delimiter, join, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import {
@@ -23,6 +23,7 @@ import {
   launchEditor,
   normalizeEditorPreference,
   normalizeWorkspaceContext,
+  prepareHarnessToolchain,
   readDesktopSettings,
   resolveHarnessHome,
   selectedEditor,
@@ -40,6 +41,21 @@ test('resolves the Harness home with DSH_HOME and tilde semantics', () => {
   assert.equal(resolveHarnessHome({ DSH_HOME: '~/custom' }, '/work', '/users/test'), resolve('/users/test/custom'))
   assert.equal(resolveHarnessHome({ DSH_HOME: './custom' }, '/work', '/users/test'), resolve('/work/custom'))
   assert.equal(resolveHarnessHome({ DSH_HOME: '   ' }, '/work', '/users/test'), resolve('/users/test/.dsh'))
+})
+
+test('provides Harness with app-owned node and pnpm commands ahead of the user PATH', (t) => {
+  const directory = temporaryDirectory(t)
+  const env = prepareHarnessToolchain({
+    directory,
+    execPath: "/Applications/DSH Desktop.app/Contents/MacOS/DSH Desktop",
+    pnpmEntry: "/Applications/DSH Desktop.app/Contents/Resources/app.asar/node_modules/pnpm/bin/pnpm.mjs",
+    env: { PATH: '/Users/test/Library/pnpm:/usr/bin' },
+    platform: 'darwin',
+  })
+
+  assert.equal(env.PATH, `${directory}${delimiter}/Users/test/Library/pnpm:/usr/bin`)
+  assert.match(readFileSync(join(directory, 'node'), 'utf8'), /ELECTRON_RUN_AS_NODE=1 exec/)
+  assert.match(readFileSync(join(directory, 'pnpm'), 'utf8'), /pnpm\.mjs/)
 })
 
 test('installs only the standalone adapter package into the DSH plugin fallback', (t) => {

@@ -15,6 +15,7 @@ import {
   launchEditor,
   normalizeEditorPreference,
   normalizeWorkspaceContext,
+  prepareHarnessToolchain,
   readDesktopSettings,
   resolveHarnessHome,
   selectedEditor,
@@ -37,6 +38,7 @@ import { loadingStateScript, normalizeProgress } from './startup-progress.js'
 const require = createRequire(import.meta.url)
 let isChinese = false
 let copy
+let harnessEnv = process.env
 
 function setLocale(locale) {
   isChinese = locale.toLowerCase().startsWith('zh')
@@ -674,7 +676,7 @@ async function startHarness(message = copy.preparing) {
       ],
       cwd: app.getPath('home'),
       env: {
-        ...process.env,
+        ...harnessEnv,
         ELECTRON_RUN_AS_NODE: '1',
         DSH_DESKTOP: '1',
         FORCE_COLOR: '0',
@@ -863,6 +865,12 @@ if (!hasLock) {
     }
     writeDshUpdaterLog('info', `Using DSH ${activeDshRuntime.version} from the ${activeDshRuntime.source} runtime.`)
     dshHome = resolveHarnessHome(process.env, app.getPath('home'), app.getPath('home'))
+    harnessEnv = prepareHarnessToolchain({
+      directory: join(app.getPath('userData'), 'toolchain'),
+      execPath: process.execPath,
+      pnpmEntry: resolvePnpmEntry(),
+      env: process.env,
+    })
     const installedPlugin = installDesktopPlugin({
       sourceDir: join(import.meta.dirname, 'plugins', 'dsh-desktop-integration'),
       dshHome,

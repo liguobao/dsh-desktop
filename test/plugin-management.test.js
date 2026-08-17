@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
@@ -74,7 +74,7 @@ test('seeds the bundled remote plugin with runtime dependencies and an updateabl
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'index.js'), 'utf8'), 'export {}\n')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'werift', 'package.json'))).version, '0.24.4')
-  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /633bf08f9bac174fc6dbe37738786ebb83421c24/)
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /3a271eaeaa649647ec27e137fb7321526799a749/)
 
   const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   profileManifest.dependencies['dsh-remote'] = 'github:liguobao/deepseek-harness-remote#newer-commit'
@@ -84,6 +84,56 @@ test('seeds the bundled remote plugin with runtime dependencies and an updateabl
     JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-remote'],
     'github:liguobao/deepseek-harness-remote#newer-commit',
   )
+})
+
+test('seeds the bundled remote plugin when an older release marked the default as seen', async (t) => {
+  const directory = temporaryDirectory(t)
+  const dshHome = join(directory, 'dsh-home')
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const sourceDir = join(directory, 'app', 'node_modules', 'dsh-remote')
+  ensureProfileInitialized(dshHome)
+  writeJson(join(profileDir, '.dsh-desktop-default-plugins.json'), {
+    version: 1,
+    seen: ['github:liguobao/deepseek-harness-remote'],
+  })
+  writeJson(join(sourceDir, 'package.json'), {
+    name: 'dsh-remote', version: '0.2.25',
+    dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(sourceDir, 'index.js'), 'export {}\n')
+
+  await installBundledRemotePlugin({ dshHome, sourceDir })
+
+  const catalog = readPluginCatalog({ dshHome })
+  assert.equal(catalog.plugins[0].name, 'dsh-remote')
+  assert.equal(catalog.plugins[0].enabled, true)
+  assert.equal(catalog.plugins[0].installed, true)
+})
+
+test('replaces the known broken bundled remote version without overwriting online updates', async (t) => {
+  const directory = temporaryDirectory(t)
+  const dshHome = join(directory, 'dsh-home')
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const sourceDir = join(directory, 'app', 'node_modules', 'dsh-remote')
+  ensureProfileInitialized(dshHome)
+  const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+  profileManifest.dependencies['dsh-remote'] = 'github:liguobao/deepseek-harness-remote#633bf08f9bac174fc6dbe37738786ebb83421c24'
+  profileManifest.dsh.profile.bundles.push('dsh-remote')
+  writeJson(join(profileDir, 'package.json'), profileManifest)
+  writeJson(join(profileDir, 'node_modules', 'dsh-remote', 'package.json'), {
+    name: 'dsh-remote', version: '0.2.25', dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'old.js'), 'broken\n')
+  writeJson(join(sourceDir, 'package.json'), {
+    name: 'dsh-remote', version: '0.2.26', dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(sourceDir, 'fixed.js'), 'fixed\n')
+
+  await installBundledRemotePlugin({ dshHome, sourceDir })
+
+  assert.equal(existsSync(join(profileDir, 'node_modules', 'dsh-remote', 'old.js')), false)
+  assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'fixed.js'), 'utf8'), 'fixed\n')
+  assert.equal(readPluginCatalog({ dshHome }).plugins[0].version, '0.2.26')
 })
 
 test('accepts GitHub repository addresses with optional revisions', () => {

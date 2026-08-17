@@ -16,8 +16,10 @@ test('release builds bundle pnpm for profile plugin management', () => {
 })
 
 test('release builds bundle the prebuilt remote plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['dsh-remote'], 'git+https://github.com/liguobao/deepseek-harness-remote.git#v0.2.25')
+  assert.equal(packageJson.dependencies['dsh-remote'], 'github:liguobao/deepseek-harness-remote#v0.2.26')
   assert.equal(existsSync(new URL('../node_modules/dsh-remote/packages/plugin/dist/index.js', import.meta.url)), true)
+  const client = readFileSync(new URL('../node_modules/dsh-remote/packages/plugin/dist/client.github.js', import.meta.url), 'utf8')
+  assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"dsh-remote"/)
 })
 
 test('release builds publish only user-facing installers', () => {

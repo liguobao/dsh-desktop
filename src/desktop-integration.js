@@ -1,6 +1,7 @@
 import { spawn as nodeSpawn } from 'node:child_process'
 import {
   accessSync,
+  chmodSync,
   constants,
   copyFileSync,
   mkdirSync,
@@ -26,6 +27,30 @@ import {
 export const DESKTOP_PLUGIN_PACKAGE = '@dsh-desktop/integration'
 export const DESKTOP_PLUGIN_FILES = ['package.json', 'lib/index.js', 'lib/client.js']
 export const MAX_DESKTOP_PATH_LENGTH = 32_768
+
+function quoteShellArgument(value) {
+  return `'${value.replaceAll("'", `'\\''`)}'`
+}
+
+/**
+ * Put app-owned Node and pnpm launchers first on Harness' PATH. Finder-launched
+ * macOS apps do not inherit a login-shell PATH, and a user pnpm launcher may
+ * otherwise fail while looking for an external `node` binary.
+ */
+export function prepareHarnessToolchain({ directory, execPath, pnpmEntry, env = process.env, platform = process.platform }) {
+  mkdirSync(directory, { recursive: true })
+  if (platform === 'win32') {
+    writeFileSync(join(directory, 'node.cmd'), `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\n"${execPath}" %*\r\n`)
+    writeFileSync(join(directory, 'pnpm.cmd'), `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\n"${execPath}" "${pnpmEntry}" %*\r\n`)
+  } else {
+    const executable = quoteShellArgument(execPath)
+    writeFileSync(join(directory, 'node'), `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec ${executable} "$@"\n`)
+    writeFileSync(join(directory, 'pnpm'), `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec ${executable} ${quoteShellArgument(pnpmEntry)} "$@"\n`)
+    chmodSync(join(directory, 'node'), 0o755)
+    chmodSync(join(directory, 'pnpm'), 0o755)
+  }
+  return { ...env, PATH: `${directory}${delimiter}${env.PATH ?? ''}` }
+}
 
 const TEXT_EXTENSIONS = new Set([
   '.c', '.cc', '.cfg', '.clj', '.cljs', '.cmake', '.conf', '.cpp', '.cs', '.css',

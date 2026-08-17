@@ -1,0 +1,12 @@
+diff --git a/node_modules/dsh-remote/packages/plugin/dist/client.github.js b/node_modules/dsh-remote/packages/plugin/dist/client.github.js
+index 3a30ce6..8db4366 100644
+--- a/node_modules/dsh-remote/packages/plugin/dist/client.github.js
++++ b/node_modules/dsh-remote/packages/plugin/dist/client.github.js
+@@ -2912,6 +2912,7 @@ Minimum version required to store current data is: ` + bestVersion + `.
+           inject: () => ({ control })
+         }, RemoteWorkspaceAction)), ctx.slots.inject("settings.plugin.item", () => ctx.slots.register({
+           name: "settings.plugin.item",
++          key: "dsh-remote",
+           id: "dsh-remote",
+           order: 30,
+           locale: localeNamespace,
