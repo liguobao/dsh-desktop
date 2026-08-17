@@ -6,6 +6,7 @@ import {
   renameSync,
   writeFileSync,
 } from 'node:fs'
+import { cp } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { parse, stringify } from 'yaml'
 
@@ -18,6 +19,7 @@ const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
 /** Bundled plugins installed automatically on a fresh profile. GitHub specs update online. */
 export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote']
+export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#633bf08f9bac174fc6dbe37738786ebb83421c24'
 
 const PROFILE_SYSTEM_BUNDLES = { web: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] }
 const PROFILE_PNPM_WORKSPACE = 'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n'
@@ -159,6 +161,88 @@ export function ensureProfileInitialized(dshHome, profile = PLUGIN_PROFILE) {
   const workspacePath = join(profileDir, 'pnpm-workspace.yaml')
   if (!existsSync(workspacePath)) writeTextAtomic(workspacePath, PROFILE_PNPM_WORKSPACE)
   return profileDir
+}
+
+function dependencyDirectory(sourceDir, name) {
+  const parts = name.split('/')
+  let current = sourceDir
+  while (true) {
+    const candidate = join(current, 'node_modules', ...parts)
+    if (existsSync(join(candidate, 'package.json'))) return candidate
+    const parent = dirname(current)
+    if (parent === current) return undefined
+    current = parent
+  }
+}
+
+function bundledDependencyClosure(sourceDir) {
+  const packages = new Map()
+  const visit = (directory) => {
+    const manifest = readJson(join(directory, 'package.json'))
+    if (packages.has(manifest.name)) return
+    packages.set(manifest.name, directory)
+    const dependencies = { ...manifest.dependencies, ...manifest.optionalDependencies }
+    for (const name of Object.keys(dependencies)) {
+      const dependency = dependencyDirectory(directory, name)
+      if (dependency !== undefined) visit(dependency)
+    }
+  }
+  visit(sourceDir)
+  return packages
+}
+
+/** Seed the prebuilt remote plugin and its runtime dependency closure without network access. */
+export async function installBundledRemotePlugin({
+  dshHome,
+  sourceDir,
+  profile = PLUGIN_PROFILE,
+  spec = BUNDLED_REMOTE_SPEC,
+}) {
+  const profileDir = ensureProfileInitialized(dshHome, profile)
+  const manifestPath = join(profileDir, 'package.json')
+  const profileManifest = readJson(manifestPath)
+  const sourceManifest = readJson(join(sourceDir, 'package.json'))
+  if (sourceManifest.name !== 'dsh-remote' || sourceManifest.dsh?.bundle?.patch === undefined) {
+    throw new Error('Bundled remote plugin is invalid')
+  }
+
+  const targetPlugin = join(profileDir, 'node_modules', 'dsh-remote')
+  const declared = Object.hasOwn(profileManifest.dependencies ?? {}, 'dsh-remote')
+  if (declared && existsSync(join(targetPlugin, 'package.json'))) {
+    return targetPlugin
+  }
+  const defaultKey = defaultPluginKey(normalizePluginSpec(spec))
+  if (!declared && new Set(readDefaultPluginState(profileDir).seen).has(defaultKey)) return undefined
+  if (!existsSync(join(targetPlugin, 'package.json'))) {
+    for (const [name, directory] of bundledDependencyClosure(sourceDir)) {
+      const target = join(profileDir, 'node_modules', ...name.split('/'))
+      if (!existsSync(join(target, 'package.json'))) await cp(directory, target, { recursive: true, dereference: true })
+    }
+  }
+
+  profileManifest.dependencies = { ...profileManifest.dependencies, 'dsh-remote': spec }
+  const bundles = Array.isArray(profileManifest.dsh?.profile?.bundles) ? profileManifest.dsh.profile.bundles : []
+  profileManifest.dsh = {
+    ...profileManifest.dsh,
+    profile: {
+      ...profileManifest.dsh?.profile,
+      bundles: bundles.includes('dsh-remote') ? bundles : [...bundles, 'dsh-remote'],
+    },
+  }
+  writeJsonAtomic(manifestPath, profileManifest)
+
+  const normalized = normalizePluginSpec(spec)
+  const lockPath = join(profileDir, 'pnpm-lock.yaml')
+  const lockfile = existsSync(lockPath) ? parse(readFileSync(lockPath, 'utf8')) : { lockfileVersion: '9.0', importers: {} }
+  lockfile.importers ??= {}
+  lockfile.importers['.'] ??= {}
+  lockfile.importers['.'].dependencies ??= {}
+  lockfile.importers['.'].dependencies['dsh-remote'] = {
+    specifier: spec,
+    version: `https://codeload.github.com/${normalized.repository}/tar.gz/${normalized.ref}`,
+  }
+  writeTextAtomic(lockPath, stringify(lockfile))
+  return targetPlugin
 }
 
 function normalizeGitHubRef(value) {
@@ -571,6 +655,7 @@ export async function installPlugin({
   const firstInstall = await runPnpmImpl({
     args: [
       'add',
+      '--workspace-root',
       '--save-prod',
       '--reporter',
       'append-only',
@@ -597,7 +682,7 @@ export async function installPlugin({
     const pinnedSpec = normalizedGitHubSpec({ ...normalized, ref: commit })
     const buildArguments = allowBuildScripts ? [`--allow-build=${githubBuildKey(plugin.name, normalized)}`] : ['--ignore-scripts']
     await runPnpmImpl({
-      args: ['add', '--save-prod', '--reporter', 'append-only', ...buildArguments, pinnedSpec],
+      args: ['add', '--workspace-root', '--save-prod', '--reporter', 'append-only', ...buildArguments, pinnedSpec],
       env,
       execPath,
       onOutput,

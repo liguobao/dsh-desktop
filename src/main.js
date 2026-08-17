@@ -25,6 +25,7 @@ import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
 import { loadPluginCatalog, normalizePluginSourceUrl } from './plugin-catalog.js'
 import {
   ensureDefaultPlugins,
+  installBundledRemotePlugin,
   installPlugin as installProfilePlugin,
   readPluginCatalog,
   removePlugin as removeProfilePlugin,
@@ -418,6 +419,11 @@ async function installDefaultPlugins() {
   const timer = setTimeout(() => controller.abort(new Error('Default plugin install timed out')), 90_000)
   timer.unref?.()
   try {
+    const bundledRemote = await installBundledRemotePlugin({
+      sourceDir: dirname(require.resolve('dsh-remote/package.json')),
+      dshHome,
+    })
+    if (bundledRemote !== undefined) writeLog('desktop', `Bundled remote plugin available at ${bundledRemote}.\n`)
     const result = await ensureDefaultPlugins({
       dshHome,
       pnpmEntry: resolvePnpmEntry(),

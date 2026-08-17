@@ -2,38 +2,21 @@ window.__ModuleLoader__.load({
   id: '@dsh-desktop/integration',
   factory: (require) => {
     const module = { exports: {} }
-    const React = require('react')
     const bridge = globalThis.dshDesktop
 
     const NS = 'dsh-desktop'
     const STYLE_ID = '@dsh-desktop/integration/actions'
     const WORKSPACE_ACTIONS_MARKER = 'dshDesktopWorkspaceActions'
-    const inject = ['sessions', 'workspaces', 'slots', 'locale']
+    const inject = ['sessions', 'workspaces', 'locale']
     const dictionaries = {
       zh: {
         'open.editor': '用编辑器打开',
         'open.fileManager': '打开文件夹',
-        'open.workspaceEditor.aria': '使用首选编辑器打开此工作区',
       },
       en: {
         'open.editor': 'Open in Editor',
         'open.fileManager': 'Open Folder',
-        'open.workspaceEditor.aria': 'Open this workspace in the preferred editor',
       },
-    }
-
-    function CodeIcon({ size = 16 } = {}) {
-      return React.createElement('svg', {
-        width: size,
-        height: size,
-        viewBox: '0 0 16 16',
-        fill: 'none',
-        'aria-hidden': 'true',
-      }, React.createElement('path', {
-        d: 'M13.25 1.2 7 7.05 3.5 4.35 1.5 6.15 4.25 8 1.5 9.85l2 1.8L7 8.95l6.25 5.85 1.25-.6V1.8l-1.25-.6Zm0 3v7.6L8.9 8l4.35-3.8Z',
-        fill: 'currentColor',
-        fillRule: 'evenodd',
-      }))
     }
 
     function iconElement(kind) {
@@ -60,40 +43,12 @@ window.__ModuleLoader__.load({
       if (result?.ok !== true) throw new Error(result?.error ?? 'Desktop path open failed')
     }
 
-    function WorkspaceEditorAction({ sessionId, openWorkspace, t }) {
-      const [busy, setBusy] = React.useState(false)
-      const label = t('open.workspaceEditor.aria')
-      const open = async () => {
-        setBusy(true)
-        try {
-          await openWorkspace(sessionId)
-        } catch (error) {
-          console.warn('DSH Desktop could not open the workspace in an editor.', error)
-        } finally {
-          setBusy(false)
-        }
-      }
-      return React.createElement('button', {
-        type: 'button',
-        className: 'dshDesktopEditorButton',
-        disabled: busy,
-        'aria-busy': busy,
-        'aria-label': label,
-        title: label,
-        onClick: open,
-      }, React.createElement(CodeIcon))
-    }
-
     function installStyle() {
       if (typeof document === 'undefined' || document.querySelector(`style[data-plugin-css="${STYLE_ID}"]`) !== null) return () => {}
       const style = document.createElement('style')
       style.dataset.plugin = '@dsh-desktop/integration'
       style.dataset.pluginCss = STYLE_ID
       style.textContent = [
-        '.dshDesktopEditorButton{box-sizing:border-box;width:32px;height:32px;border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-primary);cursor:pointer;background:transparent;border-radius:50%;justify-content:center;align-items:center;padding:0;display:inline-flex}',
-        '.dshDesktopEditorButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
-        '.dshDesktopEditorButton:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}',
-        '.dshDesktopEditorButton:disabled{color:var(--dsw-alias-label-dimmed);cursor:wait}',
         '.dshDesktopWorkspaceSeparator{height:1px;background:var(--dsw-alias-border-l3);margin:4px 8px}',
       ].join('')
       document.head.append(style)
@@ -214,20 +169,6 @@ window.__ModuleLoader__.load({
       const t = ctx.locale.bind(NS)
 
       ctx.effect(installStyle, 'dsh-desktop: native action styles')
-
-      ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
-        name: 'conversation.session.header.utilities',
-        id: 'dsh-desktop-workspace-editor',
-        order: -10,
-        locale: NS,
-        inject: () => ({
-          openWorkspace: (sessionId) => {
-            const path = ctx.sessions.list.getSnapshot().byId[String(sessionId)]?.cwd
-            if (typeof path !== 'string') throw new Error('Session workspace is unavailable')
-            return requestNativeOpen(path, 'editor')
-          },
-        }),
-      }, WorkspaceEditorAction))
 
       // Harness exposes a slot for the header utility, but not for children of
       // the Workspace ellipsis menu. Keep this adapter scoped to that portal.

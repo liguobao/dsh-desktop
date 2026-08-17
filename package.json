@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "Community desktop wrapper for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "src/main.js",
@@ -45,6 +45,7 @@
     "@deepseek-ai/dsh-subprocess": "0.1.0-rc.6",
     "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
     "@deepseek-ai/dsh-workflow": "0.1.0-rc.6",
+    "dsh-remote": "git+https://github.com/liguobao/deepseek-harness-remote.git#v0.2.25",
     "pnpm": "11.21.0",
     "semver": "7.7.3",
     "yaml": "2.9.0"

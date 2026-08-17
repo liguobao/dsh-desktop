@@ -60,7 +60,7 @@ chmod +x DSH-Desktop-*.AppImage
 
 Harness 的具体使用方式可参考上游 [Web UI 指南](https://deepseek-harness.github.io/deepseek-harness/guide/quickstart)。
 
-对话里点击代码或文本文件时，桌面适配插件会使用检测到的编辑器打开；HTML、图片、PDF 和目录仍交给系统默认程序。侧栏中每个工作区的 **…** 菜单提供**用编辑器打开**和**打开文件夹**，会话标题栏的 VS Code 图标也会在首选编辑器中打开当前工作区。还可以通过原生菜单的**工作区 → 首选编辑器**选择 VS Code、Cursor、VSCodium 或 Zed。未检测到支持的编辑器时，文件会回退到系统默认程序；显式使用编辑器打开时会显示错误提示。
+对话里点击代码或文本文件时，桌面适配插件会使用检测到的编辑器打开；HTML、图片、PDF 和目录仍交给系统默认程序。侧栏中每个工作区的 **…** 菜单提供**用编辑器打开**和**打开文件夹**。还可以通过原生菜单的**工作区 → 首选编辑器**选择 VS Code、Cursor、VSCodium 或 Zed。未检测到支持的编辑器时，文件会回退到系统默认程序；显式使用编辑器打开时会显示错误提示。
 
 窗口最上方的**插件**入口会直接打开插件管理窗口。主页的**在线插件**卡片会进入独立的可搜索目录视图，内容来自 GitHub [`dsh-plugin` topic](https://github.com/topics/dsh-plugin)；网络不可用时会回退到随应用打包的目录快照，检查源码后可一键安装。直接安装支持 npm 包名，以及 GitHub 仓库、Commit、Tree 地址和 `#ref` 格式；仓库地址优先安装最新 Tag，没有 Tag 时会固定到默认分支当前 Commit。已安装的 GitHub 插件可在线更新到默认分支最新版。修改后需重启 Harness。维护者可运行 `npm run catalog:generate` 刷新内置快照。
 

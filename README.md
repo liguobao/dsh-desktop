@@ -13,7 +13,7 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 - Shows immediate, stage-based startup progress while the local Harness becomes ready.
 - Starts and stops the Harness server together with the desktop application.
 - Provides a direct Plugins menu with online catalog search and npm/GitHub installation.
-- Opens conversation files in VS Code, Cursor, VSCodium, or Zed, with workspace actions in the sidebar, session header, and native menu.
+- Opens conversation files in VS Code, Cursor, VSCodium, or Zed, with workspace actions in the sidebar and native menu.
 - Keeps Electron's Node integration disabled and blocks untrusted in-app navigation.
 - Includes native installers and portable packages built by GitHub Actions.
 - Checks GitHub Releases for newer semantic-version tags and downloads SHA-256-verified installers locally.
@@ -60,7 +60,7 @@ chmod +x DSH-Desktop-*.AppImage
 
 See the upstream [Web UI guide](https://deepseek-harness.github.io/deepseek-harness/guide/quickstart) for the Harness workflow.
 
-Clicking a code or text file in a conversation opens it in the detected editor. HTML, images, PDFs, and directories continue to use their system-default application. Each workspace's sidebar **…** menu offers **Open in Editor** and **Open Folder**; the VS Code icon in the session header also opens the current workspace in the preferred editor. Select VS Code, Cursor, VSCodium, or Zed through the native **Workspace → Preferred Editor** menu. Files fall back to the system-default application when no supported editor is detected; an explicit editor action reports an error instead.
+Clicking a code or text file in a conversation opens it in the detected editor. HTML, images, PDFs, and directories continue to use their system-default application. Each workspace's sidebar **…** menu offers **Open in Editor** and **Open Folder**. Select VS Code, Cursor, VSCodium, or Zed through the native **Workspace → Preferred Editor** menu. Files fall back to the system-default application when no supported editor is detected; an explicit editor action reports an error instead.
 
 The **Plugins** menu opens the plugin manager directly. Its **Online plugins** card opens a separate searchable catalog discovered through the GitHub [`dsh-plugin` topic](https://github.com/topics/dsh-plugin), with a bundled catalog snapshot for offline use and one-click installation after source review. Direct installs accept npm names plus GitHub repository, commit, tree, and `#ref` URLs. Repository URLs install the latest tag, or pin the current default-branch commit when no tag exists. Installed GitHub plugins can update online to the latest default-branch commit. Restart Harness after plugin changes. Maintainers can refresh the bundled snapshot with `npm run catalog:generate`.
 

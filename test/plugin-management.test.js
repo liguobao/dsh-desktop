@@ -9,6 +9,7 @@ import {
   ensureDefaultPlugins,
   ensureProfileInitialized,
   installPlugin,
+  installBundledRemotePlugin,
   normalizePluginSpec,
   readPluginCatalog,
   removePlugin,
@@ -50,6 +51,39 @@ test('accepts registry plugin specs and rejects command or path input', () => {
   assert.throws(() => normalizePluginSpec('https://example.com/plugin.tgz'), /npm package name/)
   assert.throws(() => normalizePluginSpec('plugin name'), /Invalid plugin package/)
   assert.throws(() => normalizePluginSpec('@deepseek-ai/dsh-base'), /System bundles are managed/)
+})
+
+test('seeds the bundled remote plugin with runtime dependencies and an updateable GitHub source', async (t) => {
+  const directory = temporaryDirectory(t)
+  const dshHome = join(directory, 'dsh-home')
+  const sourceDir = join(directory, 'app', 'node_modules', 'dsh-remote')
+  const dependencyDir = join(directory, 'app', 'node_modules', 'werift')
+  writeJson(join(sourceDir, 'package.json'), {
+    name: 'dsh-remote', version: '0.2.25', dependencies: { werift: '0.24.4' },
+    dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(sourceDir, 'index.js'), 'export {}\n')
+  writeJson(join(dependencyDir, 'package.json'), { name: 'werift', version: '0.24.4' })
+
+  await installBundledRemotePlugin({ dshHome, sourceDir })
+
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const catalog = readPluginCatalog({ dshHome })
+  assert.equal(catalog.plugins[0].name, 'dsh-remote')
+  assert.equal(catalog.plugins[0].source, 'github')
+  assert.equal(catalog.plugins[0].enabled, true)
+  assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'index.js'), 'utf8'), 'export {}\n')
+  assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'werift', 'package.json'))).version, '0.24.4')
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /633bf08f9bac174fc6dbe37738786ebb83421c24/)
+
+  const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+  profileManifest.dependencies['dsh-remote'] = 'github:liguobao/deepseek-harness-remote#newer-commit'
+  writeJson(join(profileDir, 'package.json'), profileManifest)
+  await installBundledRemotePlugin({ dshHome, sourceDir })
+  assert.equal(
+    JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-remote'],
+    'github:liguobao/deepseek-harness-remote#newer-commit',
+  )
 })
 
 test('accepts GitHub repository addresses with optional revisions', () => {
@@ -204,7 +238,7 @@ test('installs the latest GitHub tag, optionally permits build scripts, and enab
     'ls-remote', '--tags', '--refs', '--sort=-version:refname', 'https://github.com/example/dsh-tools.git',
   ]])
   assert.equal(calls.length, 2)
-  assert.deepEqual(calls[0], ['add', '--save-prod', '--reporter', 'append-only', '--ignore-scripts', 'github:example/dsh-tools#v2.0.0'])
+  assert.deepEqual(calls[0], ['add', '--workspace-root', '--save-prod', '--reporter', 'append-only', '--ignore-scripts', 'github:example/dsh-tools#v2.0.0'])
   assert.ok(calls[1].includes('--allow-build=@example/github-plugin@git+https://github.com/example/dsh-tools.git'))
   assert.equal(calls[1].at(-1), `github:example/dsh-tools#${commit}`)
   assert.equal(catalog.plugins[0].source, 'github')

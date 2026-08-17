@@ -35,9 +35,8 @@ test('client adapter exposes native actions without spawning local processes', (
   assert.match(source, /workspaces\.openPath = openPath/)
   assert.match(source, /bridge\.openPath\(path, 'auto'\)/)
   assert.match(source, /bridge\.publishWorkspaceContext/)
-  assert.match(source, /conversation\.session\.header\.utilities/)
-  assert.match(source, /id: 'dsh-desktop-workspace-editor'/)
-  assert.match(source, /order: -10/)
+  assert.doesNotMatch(source, /conversation\.session\.header\.utilities/)
+  assert.doesNotMatch(source, /dsh-desktop-workspace-editor/)
   assert.match(source, /installWorkspaceMenuActions/)
   assert.match(source, /'editor', pendingPath, 'editor'/)
   assert.match(source, /'fileManager', pendingPath, 'default'/)
@@ -75,11 +74,8 @@ test('client adapter replaces and restores the Harness path action at runtime', 
   vm.runInContext(source, context)
 
   assert.equal(registration.id, '@dsh-desktop/integration')
-  const plugin = registration.factory((specifier) => {
-    assert.equal(specifier, 'react')
-    return {}
-  })
-  assert.deepEqual(Array.from(plugin.inject), ['sessions', 'workspaces', 'slots', 'locale'])
+  const plugin = registration.factory(() => assert.fail('client adapter should not require UI modules'))
+  assert.deepEqual(Array.from(plugin.inject), ['sessions', 'workspaces', 'locale'])
 
   const subscribers = []
   const originalOpenPath = async () => { throw new Error('unexpected fallback') }
@@ -111,23 +107,12 @@ test('client adapter replaces and restores the Harness path action at runtime', 
     },
   }
   const effects = []
-  let headerEntry
   plugin.apply({
     sessions,
     workspaces,
     locale: {
       register: () => () => {},
       bind: () => key => key,
-    },
-    slots: {
-      inject: (name, callback) => {
-        assert.equal(name, 'conversation.session.header.utilities')
-        return callback()
-      },
-      register: (entry, component) => {
-        headerEntry = { entry, component }
-        return () => {}
-      },
     },
     effect: callback => {
       const dispose = callback()
@@ -140,11 +125,6 @@ test('client adapter replaces and restores the Harness path action at runtime', 
   assert.deepEqual(opened, [{ path: '/workspace/src/main.js', intent: 'auto' }])
   assert.deepEqual(JSON.parse(JSON.stringify(published)), [{ active: '/workspace', roots: ['/workspace'] }])
   assert.equal(subscribers.length, 2)
-  assert.equal(headerEntry.entry.id, 'dsh-desktop-workspace-editor')
-  assert.equal(headerEntry.entry.order, -10)
-  await headerEntry.entry.inject().openWorkspace('session-1')
-  assert.deepEqual(opened.at(-1), { path: '/workspace', intent: 'editor' })
-
   sessionSnapshot.current = undefined
   subscribers[0]()
   assert.deepEqual(JSON.parse(JSON.stringify(published.at(-1))), { active: '/workspace', roots: ['/workspace'] })
