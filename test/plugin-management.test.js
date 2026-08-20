@@ -75,7 +75,7 @@ test('seeds the bundled remote plugin with runtime dependencies and an updateabl
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'index.js'), 'utf8'), 'export {}\n')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'werift', 'package.json'))).version, '0.24.4')
-  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /599bd5a4d14b980c8101575eca5c36a12007a2f8/)
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /4e4ab9e0162273b5c3eb3a8bbb90929ec58c2a7c/)
 
   const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   profileManifest.dependencies['dsh-remote'] = 'github:liguobao/deepseek-harness-remote#newer-commit'
@@ -117,7 +117,7 @@ test('seeds the bundled GitHub file viewer with its runtime dependency closure',
   const sourceDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
   const dependencyDir = join(directory, 'app', 'node_modules', 'markdown-it')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'dsh-file-viewer', version: '0.2.1', dependencies: { 'markdown-it': '14.1.0' },
+    name: 'dsh-file-viewer', version: '0.2.2', dependencies: { 'markdown-it': '14.1.0' },
     dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'index.js'), 'export {}\n')
@@ -132,12 +132,12 @@ test('seeds the bundled GitHub file viewer with its runtime dependency closure',
   const catalog = readPluginCatalog({ dshHome })
   assert.equal(catalog.plugins[0].name, 'dsh-file-viewer')
   assert.equal(catalog.plugins[0].source, 'github')
-  assert.equal(catalog.plugins[0].version, '0.2.1')
+  assert.equal(catalog.plugins[0].version, '0.2.2')
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-file-viewer', 'index.js'), 'utf8'), 'export {}\n')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'markdown-it', 'package.json'))).version, '14.1.0')
-  assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], 'github:liguobao/dsh-file-viewer#a4d6e2cbf6424a47f93d735070741df391d5ede4')
-  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /a4d6e2cbf6424a47f93d735070741df391d5ede4/)
+  assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], 'github:liguobao/dsh-file-viewer#ed2f9ede3ada97145b3701aa8a09f45fc229f53f')
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /ed2f9ede3ada97145b3701aa8a09f45fc229f53f/)
 })
 
 test('upgrades the npm file viewer bundle back to the online-updateable GitHub release', async (t) => {
@@ -155,16 +155,16 @@ test('upgrades the npm file viewer bundle back to the online-updateable GitHub r
   })
   writeFileSync(join(targetDir, 'legacy.js'), 'old\n')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'dsh-file-viewer', version: '0.2.1', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'dsh-file-viewer', version: '0.2.2', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'index.js'), 'new\n')
 
   await installBundledFileViewerPlugin({ dshHome, sourceDir })
 
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, 'github:liguobao/dsh-file-viewer#a4d6e2cbf6424a47f93d735070741df391d5ede4')
+  assert.equal(plugin.requested, 'github:liguobao/dsh-file-viewer#ed2f9ede3ada97145b3701aa8a09f45fc229f53f')
   assert.equal(plugin.source, 'github')
-  assert.equal(plugin.version, '0.2.1')
+  assert.equal(plugin.version, '0.2.2')
   assert.equal(plugin.enabled, true)
   assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
   assert.equal(readFileSync(join(targetDir, 'index.js'), 'utf8'), 'new\n')
@@ -185,15 +185,15 @@ test('upgrades the previous bundled GitHub file viewer release', async (t) => {
   })
   writeFileSync(join(targetDir, 'legacy.js'), 'old\n')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'dsh-file-viewer', version: '0.2.1', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'dsh-file-viewer', version: '0.2.2', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'index.js'), 'new\n')
 
   await installBundledFileViewerPlugin({ dshHome, sourceDir })
 
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, 'github:liguobao/dsh-file-viewer#a4d6e2cbf6424a47f93d735070741df391d5ede4')
-  assert.equal(plugin.version, '0.2.1')
+  assert.equal(plugin.requested, 'github:liguobao/dsh-file-viewer#ed2f9ede3ada97145b3701aa8a09f45fc229f53f')
+  assert.equal(plugin.version, '0.2.2')
   assert.equal(plugin.enabled, true)
   assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
 })
@@ -204,19 +204,19 @@ test('repairs a bundled file viewer whose ignored prepare script left its dist m
   const profileDir = ensureProfileInitialized(dshHome)
   const sourceDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
   const targetDir = join(profileDir, 'node_modules', 'dsh-file-viewer')
-  const currentSpec = 'github:liguobao/dsh-file-viewer#a4d6e2cbf6424a47f93d735070741df391d5ede4'
+  const releasedSpec = 'github:liguobao/dsh-file-viewer#v0.2.2'
   const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
-  profileManifest.dependencies['dsh-file-viewer'] = currentSpec
+  profileManifest.dependencies['dsh-file-viewer'] = releasedSpec
   profileManifest.dsh.profile.bundles.push('dsh-file-viewer')
   writeJson(join(profileDir, 'package.json'), profileManifest)
   writeJson(join(targetDir, 'package.json'), {
-    name: 'dsh-file-viewer', version: '0.2.1', main: './dist/index.js',
+    name: 'dsh-file-viewer', version: '0.2.2', main: './dist/index.js',
     dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(targetDir, 'cordis.patch.yml'), 'include: []\n')
   writeFileSync(join(targetDir, 'incomplete.js'), 'old\n')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'dsh-file-viewer', version: '0.2.1', main: './dist/index.js',
+    name: 'dsh-file-viewer', version: '0.2.2', main: './dist/index.js',
     dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'cordis.patch.yml'), 'include: []\n')
@@ -227,7 +227,10 @@ test('repairs a bundled file viewer whose ignored prepare script left its dist m
 
   assert.equal(readFileSync(join(targetDir, 'dist', 'index.js'), 'utf8'), 'built\n')
   assert.equal(existsSync(join(targetDir, 'incomplete.js')), false)
-  assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], currentSpec)
+  assert.equal(
+    JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'],
+    'github:liguobao/dsh-file-viewer#ed2f9ede3ada97145b3701aa8a09f45fc229f53f',
+  )
 })
 
 test('upgrades the previous bundled remote release without overwriting online updates', async (t) => {
@@ -237,15 +240,15 @@ test('upgrades the previous bundled remote release without overwriting online up
   const sourceDir = join(directory, 'app', 'node_modules', 'dsh-remote')
   ensureProfileInitialized(dshHome)
   const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
-  profileManifest.dependencies['dsh-remote'] = 'github:liguobao/deepseek-harness-remote#da4beadabb57096a66b3ca790fd85a340a0ca899'
+  profileManifest.dependencies['dsh-remote'] = 'github:liguobao/deepseek-harness-remote#599bd5a4d14b980c8101575eca5c36a12007a2f8'
   profileManifest.dsh.profile.bundles.push('dsh-remote')
   writeJson(join(profileDir, 'package.json'), profileManifest)
   writeJson(join(profileDir, 'node_modules', 'dsh-remote', 'package.json'), {
-    name: 'dsh-remote', version: '0.3.17', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'dsh-remote', version: '0.3.18', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'old.js'), 'broken\n')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'dsh-remote', version: '0.3.18', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'dsh-remote', version: '0.3.19', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'fixed.js'), 'fixed\n')
 
@@ -254,8 +257,8 @@ test('upgrades the previous bundled remote release without overwriting online up
   assert.equal(existsSync(join(profileDir, 'node_modules', 'dsh-remote', 'old.js')), false)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'fixed.js'), 'utf8'), 'fixed\n')
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, 'github:liguobao/deepseek-harness-remote#599bd5a4d14b980c8101575eca5c36a12007a2f8')
-  assert.equal(plugin.version, '0.3.18')
+  assert.equal(plugin.requested, 'github:liguobao/deepseek-harness-remote#4e4ab9e0162273b5c3eb3a8bbb90929ec58c2a7c')
+  assert.equal(plugin.version, '0.3.19')
 })
 
 test('accepts GitHub repository addresses with optional revisions', () => {
