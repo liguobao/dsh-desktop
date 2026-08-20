@@ -22,6 +22,13 @@ test('release builds bundle the prebuilt remote plugin and its runtime dependenc
   assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"dsh-remote"/)
 })
 
+test('release builds bundle the prebuilt file viewer plugin and its runtime dependency tree', () => {
+  assert.equal(packageJson.dependencies['dsh-file-viewer'], 'github:liguobao/dsh-file-viewer#v0.1.2')
+  assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/index.js', import.meta.url)), true)
+  assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/client.js', import.meta.url)), true)
+  assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/cordis.patch.yml', import.meta.url)), true)
+})
+
 test('release builds publish only user-facing installers', () => {
   assert.equal(packageJson.build.publish, undefined)
   assert.deepEqual(packageJson.build.mac.target, ['dmg'])

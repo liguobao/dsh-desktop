@@ -25,7 +25,9 @@ import { HarnessServer } from './harness-server.js'
 import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
 import { loadPluginCatalog, normalizePluginSourceUrl } from './plugin-catalog.js'
 import {
+  BUNDLED_FILE_VIEWER_SPEC,
   ensureDefaultPlugins,
+  installBundledPlugin,
   installBundledRemotePlugin,
   installPlugin as installProfilePlugin,
   readPluginCatalog,
@@ -899,6 +901,18 @@ if (!hasLock) {
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
       writeLog('stderr', `Bundled remote plugin preparation failed: ${detail}\n`)
+    }
+    try {
+      const bundledFileViewer = await installBundledPlugin({
+        sourceDir: dirname(require.resolve('dsh-file-viewer/package.json')),
+        dshHome,
+        spec: BUNDLED_FILE_VIEWER_SPEC,
+        packageName: 'dsh-file-viewer',
+      })
+      if (bundledFileViewer !== undefined) writeLog('desktop', `Bundled file viewer plugin available at ${bundledFileViewer}.\n`)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      writeLog('stderr', `Bundled file viewer plugin preparation failed: ${detail}\n`)
     }
     initializeAutoUpdates()
     initializeDshUpdates()

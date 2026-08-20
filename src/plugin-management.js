@@ -18,8 +18,9 @@ const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
 const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
 /** Bundled plugins installed automatically on a fresh profile. GitHub specs update online. */
-export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote']
+export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote', 'github:liguobao/dsh-file-viewer']
 export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#a4826a4e48008adcbc15d7f075926657d87629e0'
+export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#605cd34b9e96ad7775f37493b701a601b97efeee'
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   'github:liguobao/deepseek-harness-remote#633bf08f9bac174fc6dbe37738786ebb83421c24',
   'github:liguobao/deepseek-harness-remote#3a271eaeaa649647ec27e137fb7321526799a749',
@@ -195,25 +196,27 @@ function bundledDependencyClosure(sourceDir) {
   return packages
 }
 
-/** Seed the prebuilt remote plugin and its runtime dependency closure without network access. */
-export async function installBundledRemotePlugin({
+/** Seed a prebuilt bundled plugin and its runtime dependency closure without network access. */
+export async function installBundledPlugin({
   dshHome,
   sourceDir,
   profile = PLUGIN_PROFILE,
-  spec = BUNDLED_REMOTE_SPEC,
+  spec,
+  packageName,
+  legacySpecs = new Set(),
 }) {
   const profileDir = ensureProfileInitialized(dshHome, profile)
   const manifestPath = join(profileDir, 'package.json')
   const profileManifest = readJson(manifestPath)
   const sourceManifest = readJson(join(sourceDir, 'package.json'))
-  if (sourceManifest.name !== 'dsh-remote' || sourceManifest.dsh?.bundle?.patch === undefined) {
-    throw new Error('Bundled remote plugin is invalid')
+  if (sourceManifest.name !== packageName || sourceManifest.dsh?.bundle?.patch === undefined) {
+    throw new Error(`Bundled plugin ${packageName} is invalid`)
   }
 
-  const targetPlugin = join(profileDir, 'node_modules', 'dsh-remote')
-  const declared = Object.hasOwn(profileManifest.dependencies ?? {}, 'dsh-remote')
+  const targetPlugin = join(profileDir, 'node_modules', ...packageName.split('/'))
+  const declared = Object.hasOwn(profileManifest.dependencies ?? {}, packageName)
   if (declared && existsSync(join(targetPlugin, 'package.json'))) {
-    if (!LEGACY_BUNDLED_REMOTE_SPECS.has(profileManifest.dependencies['dsh-remote'])) return targetPlugin
+    if (!legacySpecs.has(profileManifest.dependencies[packageName])) return targetPlugin
     await rm(targetPlugin, { recursive: true, force: true })
   }
   if (!existsSync(join(targetPlugin, 'package.json'))) {
@@ -223,13 +226,13 @@ export async function installBundledRemotePlugin({
     }
   }
 
-  profileManifest.dependencies = { ...profileManifest.dependencies, 'dsh-remote': spec }
+  profileManifest.dependencies = { ...profileManifest.dependencies, [packageName]: spec }
   const bundles = Array.isArray(profileManifest.dsh?.profile?.bundles) ? profileManifest.dsh.profile.bundles : []
   profileManifest.dsh = {
     ...profileManifest.dsh,
     profile: {
       ...profileManifest.dsh?.profile,
-      bundles: bundles.includes('dsh-remote') ? bundles : [...bundles, 'dsh-remote'],
+      bundles: bundles.includes(packageName) ? bundles : [...bundles, packageName],
     },
   }
   writeJsonAtomic(manifestPath, profileManifest)
@@ -240,12 +243,22 @@ export async function installBundledRemotePlugin({
   lockfile.importers ??= {}
   lockfile.importers['.'] ??= {}
   lockfile.importers['.'].dependencies ??= {}
-  lockfile.importers['.'].dependencies['dsh-remote'] = {
+  lockfile.importers['.'].dependencies[packageName] = {
     specifier: spec,
     version: `https://codeload.github.com/${normalized.repository}/tar.gz/${normalized.ref}`,
   }
   writeTextAtomic(lockPath, stringify(lockfile))
   return targetPlugin
+}
+
+/** Seed the prebuilt remote plugin and its runtime dependency closure without network access. */
+export function installBundledRemotePlugin(options) {
+  return installBundledPlugin({
+    ...options,
+    packageName: 'dsh-remote',
+    spec: options.spec ?? BUNDLED_REMOTE_SPEC,
+    legacySpecs: LEGACY_BUNDLED_REMOTE_SPECS,
+  })
 }
 
 function normalizeGitHubRef(value) {

@@ -8,6 +8,7 @@ import test from 'node:test'
 import {
   ensureDefaultPlugins,
   ensureProfileInitialized,
+  installBundledPlugin,
   installPlugin,
   installBundledRemotePlugin,
   normalizePluginSpec,
@@ -108,6 +109,35 @@ test('seeds the bundled remote plugin when an older release marked the default a
   assert.equal(catalog.plugins[0].name, 'dsh-remote')
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(catalog.plugins[0].installed, true)
+})
+
+test('seeds the bundled file viewer plugin with its runtime dependency closure', async (t) => {
+  const directory = temporaryDirectory(t)
+  const dshHome = join(directory, 'dsh-home')
+  const sourceDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
+  const dependencyDir = join(directory, 'app', 'node_modules', 'markdown-it')
+  writeJson(join(sourceDir, 'package.json'), {
+    name: 'dsh-file-viewer', version: '0.1.2', dependencies: { 'markdown-it': '14.1.0' },
+    dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(sourceDir, 'index.js'), 'export {}\n')
+  writeJson(join(dependencyDir, 'package.json'), { name: 'markdown-it', version: '14.1.0' })
+
+  await installBundledPlugin({
+    dshHome,
+    sourceDir,
+    spec: 'github:liguobao/dsh-file-viewer#605cd34b9e96ad7775f37493b701a601b97efeee',
+    packageName: 'dsh-file-viewer',
+  })
+
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const catalog = readPluginCatalog({ dshHome })
+  assert.equal(catalog.plugins[0].name, 'dsh-file-viewer')
+  assert.equal(catalog.plugins[0].source, 'github')
+  assert.equal(catalog.plugins[0].enabled, true)
+  assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-file-viewer', 'index.js'), 'utf8'), 'export {}\n')
+  assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'markdown-it', 'package.json'))).version, '14.1.0')
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /605cd34b9e96ad7775f37493b701a601b97efeee/)
 })
 
 test('replaces the known broken bundled remote version without overwriting online updates', async (t) => {
