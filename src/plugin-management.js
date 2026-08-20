@@ -19,14 +19,16 @@ const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
 /** Bundled plugins installed automatically on a fresh profile. GitHub specs update online. */
 export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote', 'github:liguobao/dsh-file-viewer']
-export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#a4826a4e48008adcbc15d7f075926657d87629e0'
-export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#4295572d3192fd4685aeda42b34a7ddb4b793754'
+export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#da4beadabb57096a66b3ca790fd85a340a0ca899'
+export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#a4d6e2cbf6424a47f93d735070741df391d5ede4'
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   'github:liguobao/deepseek-harness-remote#633bf08f9bac174fc6dbe37738786ebb83421c24',
   'github:liguobao/deepseek-harness-remote#3a271eaeaa649647ec27e137fb7321526799a749',
+  'github:liguobao/deepseek-harness-remote#a4826a4e48008adcbc15d7f075926657d87629e0',
 ])
 const LEGACY_BUNDLED_FILE_VIEWER_SPECS = new Set([
   'github:liguobao/dsh-file-viewer#605cd34b9e96ad7775f37493b701a601b97efeee',
+  'github:liguobao/dsh-file-viewer#4295572d3192fd4685aeda42b34a7ddb4b793754',
   '0.1.3',
 ])
 
@@ -200,6 +202,12 @@ function bundledDependencyClosure(sourceDir) {
   return packages
 }
 
+function bundledPluginFilesAvailable(directory, manifest) {
+  return [manifest.main, manifest.dsh?.bundle?.patch].every(path =>
+    typeof path !== 'string' || path.trim() === '' || existsSync(join(directory, path)),
+  )
+}
+
 /** Seed a prebuilt bundled plugin and its runtime dependency closure without network access. */
 export async function installBundledPlugin({
   dshHome,
@@ -234,7 +242,11 @@ export async function installBundledPlugin({
   const targetPlugin = join(profileDir, 'node_modules', ...packageName.split('/'))
   const declared = Object.hasOwn(profileManifest.dependencies ?? {}, packageName)
   if (declared && existsSync(join(targetPlugin, 'package.json'))) {
-    if (!legacySpecs.has(profileManifest.dependencies[packageName])) return targetPlugin
+    const declaredSpec = profileManifest.dependencies[packageName]
+    const needsMigration = legacySpecs.has(declaredSpec)
+    const needsBundledRepair = declaredSpec === dependencySpecifier
+      && !bundledPluginFilesAvailable(targetPlugin, sourceManifest)
+    if (!needsMigration && !needsBundledRepair) return targetPlugin
     await rm(targetPlugin, { recursive: true, force: true })
   }
   if (!existsSync(join(targetPlugin, 'package.json'))) {
@@ -651,7 +663,7 @@ function resolvedGitHubCommit(profileDir, packageName) {
   const dependency = lockfile?.importers?.['.']?.dependencies?.[packageName]
   const resolution = typeof dependency === 'string' ? dependency : dependency?.version
   if (typeof resolution !== 'string') return undefined
-  return /(?:\/tar\.gz\/|#)([a-f0-9]{40})(?:$|[?&])/i.exec(resolution)?.[1]
+  return /(?:\/tar\.gz\/|#)([a-f0-9]{40})(?:$|[?&(])/i.exec(resolution)?.[1]
 }
 
 function forgetGitHubBuildPermission(profileDir, plugin) {
