@@ -111,13 +111,13 @@ test('seeds the bundled remote plugin when an older release marked the default a
   assert.equal(catalog.plugins[0].installed, true)
 })
 
-test('seeds the bundled npm file viewer with its runtime dependency closure', async (t) => {
+test('seeds the bundled GitHub file viewer with its runtime dependency closure', async (t) => {
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
   const sourceDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
   const dependencyDir = join(directory, 'app', 'node_modules', 'markdown-it')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'dsh-file-viewer', version: '0.1.3', dependencies: { 'markdown-it': '14.1.0' },
+    name: 'dsh-file-viewer', version: '0.2.0', dependencies: { 'markdown-it': '14.1.0' },
     dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'index.js'), 'export {}\n')
@@ -131,39 +131,40 @@ test('seeds the bundled npm file viewer with its runtime dependency closure', as
   const profileDir = join(dshHome, 'profiles', 'web')
   const catalog = readPluginCatalog({ dshHome })
   assert.equal(catalog.plugins[0].name, 'dsh-file-viewer')
-  assert.equal(catalog.plugins[0].source, 'npm')
-  assert.equal(catalog.plugins[0].version, '0.1.3')
+  assert.equal(catalog.plugins[0].source, 'github')
+  assert.equal(catalog.plugins[0].version, '0.2.0')
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-file-viewer', 'index.js'), 'utf8'), 'export {}\n')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'markdown-it', 'package.json'))).version, '14.1.0')
-  assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], '0.1.3')
-  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /specifier: 0\.1\.3\s+version: 0\.1\.3/)
+  assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], 'github:liguobao/dsh-file-viewer#4295572d3192fd4685aeda42b34a7ddb4b793754')
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /4295572d3192fd4685aeda42b34a7ddb4b793754/)
 })
 
-test('upgrades the former GitHub file viewer bundle to the bundled npm release', async (t) => {
+test('upgrades the npm file viewer bundle back to the online-updateable GitHub release', async (t) => {
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
   const profileDir = ensureProfileInitialized(dshHome)
   const sourceDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
   const targetDir = join(profileDir, 'node_modules', 'dsh-file-viewer')
   const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
-  profileManifest.dependencies['dsh-file-viewer'] = 'github:liguobao/dsh-file-viewer#605cd34b9e96ad7775f37493b701a601b97efeee'
+  profileManifest.dependencies['dsh-file-viewer'] = '0.1.3'
   profileManifest.dsh.profile.bundles.push('dsh-file-viewer')
   writeJson(join(profileDir, 'package.json'), profileManifest)
   writeJson(join(targetDir, 'package.json'), {
-    name: 'dsh-file-viewer', version: '0.1.2', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'dsh-file-viewer', version: '0.1.3', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(targetDir, 'legacy.js'), 'old\n')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'dsh-file-viewer', version: '0.1.3', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'dsh-file-viewer', version: '0.2.0', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'index.js'), 'new\n')
 
   await installBundledFileViewerPlugin({ dshHome, sourceDir })
 
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, '0.1.3')
-  assert.equal(plugin.version, '0.1.3')
+  assert.equal(plugin.requested, 'github:liguobao/dsh-file-viewer#4295572d3192fd4685aeda42b34a7ddb4b793754')
+  assert.equal(plugin.source, 'github')
+  assert.equal(plugin.version, '0.2.0')
   assert.equal(plugin.enabled, true)
   assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
   assert.equal(readFileSync(join(targetDir, 'index.js'), 'utf8'), 'new\n')

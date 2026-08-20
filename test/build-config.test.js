@@ -23,7 +23,7 @@ test('release builds bundle the prebuilt remote plugin and its runtime dependenc
 })
 
 test('release builds bundle the prebuilt file viewer plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['dsh-file-viewer'], '0.1.3')
+  assert.equal(packageJson.dependencies['dsh-file-viewer'], 'github:liguobao/dsh-file-viewer#v0.2.0')
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/index.js', import.meta.url)), true)
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/client.js', import.meta.url)), true)
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/cordis.patch.yml', import.meta.url)), true)

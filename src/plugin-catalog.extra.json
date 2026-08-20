@@ -24,7 +24,7 @@
         "zh": "DeepSeek Harness 通用文件预览层：直接在 Web UI 内打开并查看文件，无需外部应用。支持图片、PDF、CSV/TSV 表格、文本/日志、代码高亮、Markdown、JSON/YAML 树形视图，以及安全回退（外部打开 / 显示位置 / 复制路径）。"
       },
       "stars": 0,
-      "npm": "dsh-file-viewer",
+      "install": "dsh plugin --profile web add github:liguobao/dsh-file-viewer",
       "added": "2026-08-20"
     }
   ]

@@ -18,15 +18,16 @@ const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
 const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
 /** Bundled plugins installed automatically on a fresh profile. GitHub specs update online. */
-export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote', 'dsh-file-viewer']
+export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote', 'github:liguobao/dsh-file-viewer']
 export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#a4826a4e48008adcbc15d7f075926657d87629e0'
-export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.1.3'
+export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#4295572d3192fd4685aeda42b34a7ddb4b793754'
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   'github:liguobao/deepseek-harness-remote#633bf08f9bac174fc6dbe37738786ebb83421c24',
   'github:liguobao/deepseek-harness-remote#3a271eaeaa649647ec27e137fb7321526799a749',
 ])
 const LEGACY_BUNDLED_FILE_VIEWER_SPECS = new Set([
   'github:liguobao/dsh-file-viewer#605cd34b9e96ad7775f37493b701a601b97efeee',
+  '0.1.3',
 ])
 
 const PROFILE_SYSTEM_BUNDLES = { web: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] }
@@ -277,7 +278,7 @@ export function installBundledRemotePlugin(options) {
   })
 }
 
-/** Seed the prebuilt npm file-viewer release, replacing the former GitHub bundle. */
+/** Seed the prebuilt file-viewer release and migrate superseded bundled sources. */
 export function installBundledFileViewerPlugin(options) {
   return installBundledPlugin({
     ...options,
