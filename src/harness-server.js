@@ -4,6 +4,22 @@ import { spawn as nodeSpawn } from 'node:child_process'
 
 const READY_URL = /(?:^|\n)dsh web:\s+(http:\/\/127\.0\.0\.1:\d+)(?:\s|$)/
 
+/** Build the DSH Web invocation used by the embedded desktop server. */
+export function buildHarnessArgs({ entry, parentWatch, patch }) {
+  return [
+    '--expose-internals',
+    '--require',
+    parentWatch,
+    entry,
+    'web',
+    '--patch',
+    patch,
+    '--port',
+    '0',
+    '--no-open',
+  ]
+}
+
 /** @param {import('node:child_process').ChildProcess} child @param {NodeJS.Signals} signal */
 function signalProcessTree(child, signal) {
   if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return

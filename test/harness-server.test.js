@@ -2,7 +2,26 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
-import { HarnessServer } from '../src/harness-server.js'
+import { buildHarnessArgs, HarnessServer } from '../src/harness-server.js'
+
+test('embedded Web launch disables the upstream default-browser handoff', () => {
+  assert.deepEqual(buildHarnessArgs({
+    entry: '/app/dsh/bin.js',
+    parentWatch: '/app/parent-watch.cjs',
+    patch: '/app/desktop.patch.yml',
+  }), [
+    '--expose-internals',
+    '--require',
+    '/app/parent-watch.cjs',
+    '/app/dsh/bin.js',
+    'web',
+    '--patch',
+    '/app/desktop.patch.yml',
+    '--port',
+    '0',
+    '--no-open',
+  ])
+})
 
 function fakeChild() {
   const child = new EventEmitter()

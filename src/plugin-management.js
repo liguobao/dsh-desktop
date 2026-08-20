@@ -18,12 +18,15 @@ const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
 const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
 /** Bundled plugins installed automatically on a fresh profile. GitHub specs update online. */
-export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote', 'github:liguobao/dsh-file-viewer']
+export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote', 'dsh-file-viewer']
 export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#a4826a4e48008adcbc15d7f075926657d87629e0'
-export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#605cd34b9e96ad7775f37493b701a601b97efeee'
+export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.1.3'
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   'github:liguobao/deepseek-harness-remote#633bf08f9bac174fc6dbe37738786ebb83421c24',
   'github:liguobao/deepseek-harness-remote#3a271eaeaa649647ec27e137fb7321526799a749',
+])
+const LEGACY_BUNDLED_FILE_VIEWER_SPECS = new Set([
+  'github:liguobao/dsh-file-viewer#605cd34b9e96ad7775f37493b701a601b97efeee',
 ])
 
 const PROFILE_SYSTEM_BUNDLES = { web: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] }
@@ -212,6 +215,20 @@ export async function installBundledPlugin({
   if (sourceManifest.name !== packageName || sourceManifest.dsh?.bundle?.patch === undefined) {
     throw new Error(`Bundled plugin ${packageName} is invalid`)
   }
+  const normalized = normalizePluginSpec(spec)
+  let dependencySpecifier
+  let lockVersion
+  if (normalized.source === 'github') {
+    if (normalized.ref === undefined) throw new Error(`Bundled plugin ${packageName} must pin a GitHub revision`)
+    dependencySpecifier = spec
+    lockVersion = `https://codeload.github.com/${normalized.repository}/tar.gz/${normalized.ref}`
+  } else {
+    if (normalized.packageName !== packageName || normalized.spec !== `${packageName}@${sourceManifest.version}`) {
+      throw new Error(`Bundled plugin ${packageName} must pin its packaged npm version`)
+    }
+    dependencySpecifier = sourceManifest.version
+    lockVersion = sourceManifest.version
+  }
 
   const targetPlugin = join(profileDir, 'node_modules', ...packageName.split('/'))
   const declared = Object.hasOwn(profileManifest.dependencies ?? {}, packageName)
@@ -226,7 +243,7 @@ export async function installBundledPlugin({
     }
   }
 
-  profileManifest.dependencies = { ...profileManifest.dependencies, [packageName]: spec }
+  profileManifest.dependencies = { ...profileManifest.dependencies, [packageName]: dependencySpecifier }
   const bundles = Array.isArray(profileManifest.dsh?.profile?.bundles) ? profileManifest.dsh.profile.bundles : []
   profileManifest.dsh = {
     ...profileManifest.dsh,
@@ -237,15 +254,14 @@ export async function installBundledPlugin({
   }
   writeJsonAtomic(manifestPath, profileManifest)
 
-  const normalized = normalizePluginSpec(spec)
   const lockPath = join(profileDir, 'pnpm-lock.yaml')
   const lockfile = existsSync(lockPath) ? parse(readFileSync(lockPath, 'utf8')) : { lockfileVersion: '9.0', importers: {} }
   lockfile.importers ??= {}
   lockfile.importers['.'] ??= {}
   lockfile.importers['.'].dependencies ??= {}
   lockfile.importers['.'].dependencies[packageName] = {
-    specifier: spec,
-    version: `https://codeload.github.com/${normalized.repository}/tar.gz/${normalized.ref}`,
+    specifier: dependencySpecifier,
+    version: lockVersion,
   }
   writeTextAtomic(lockPath, stringify(lockfile))
   return targetPlugin
@@ -258,6 +274,16 @@ export function installBundledRemotePlugin(options) {
     packageName: 'dsh-remote',
     spec: options.spec ?? BUNDLED_REMOTE_SPEC,
     legacySpecs: LEGACY_BUNDLED_REMOTE_SPECS,
+  })
+}
+
+/** Seed the prebuilt npm file-viewer release, replacing the former GitHub bundle. */
+export function installBundledFileViewerPlugin(options) {
+  return installBundledPlugin({
+    ...options,
+    packageName: 'dsh-file-viewer',
+    spec: options.spec ?? BUNDLED_FILE_VIEWER_SPEC,
+    legacySpecs: LEGACY_BUNDLED_FILE_VIEWER_SPECS,
   })
 }
 

@@ -21,13 +21,12 @@ import {
   selectedEditor,
   writeDesktopSettings,
 } from './desktop-integration.js'
-import { HarnessServer } from './harness-server.js'
+import { buildHarnessArgs, HarnessServer } from './harness-server.js'
 import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
 import { loadPluginCatalog, normalizePluginSourceUrl } from './plugin-catalog.js'
 import {
-  BUNDLED_FILE_VIEWER_SPEC,
   ensureDefaultPlugins,
-  installBundledPlugin,
+  installBundledFileViewerPlugin,
   installBundledRemotePlugin,
   installPlugin as installProfilePlugin,
   readPluginCatalog,
@@ -671,17 +670,11 @@ async function startHarness(message = copy.preparing) {
       // Node keeps them behind the same explicit switch as upstream Node.
       // The preload watches the otherwise-unused stdin pipe so an abrupt
       // desktop-parent exit still asks dsh to shut down.
-      args: [
-        '--expose-internals',
-        '--require',
-        join(import.meta.dirname, 'parent-watch.cjs'),
-        resolveDshEntry(),
-        'web',
-        '--patch',
-        join(import.meta.dirname, 'dsh-desktop.patch.yml'),
-        '--port',
-        '0',
-      ],
+      args: buildHarnessArgs({
+        entry: resolveDshEntry(),
+        parentWatch: join(import.meta.dirname, 'parent-watch.cjs'),
+        patch: join(import.meta.dirname, 'dsh-desktop.patch.yml'),
+      }),
       cwd: app.getPath('home'),
       env: {
         ...harnessEnv,
@@ -903,11 +896,9 @@ if (!hasLock) {
       writeLog('stderr', `Bundled remote plugin preparation failed: ${detail}\n`)
     }
     try {
-      const bundledFileViewer = await installBundledPlugin({
+      const bundledFileViewer = await installBundledFileViewerPlugin({
         sourceDir: dirname(require.resolve('dsh-file-viewer/package.json')),
         dshHome,
-        spec: BUNDLED_FILE_VIEWER_SPEC,
-        packageName: 'dsh-file-viewer',
       })
       if (bundledFileViewer !== undefined) writeLog('desktop', `Bundled file viewer plugin available at ${bundledFileViewer}.\n`)
     } catch (error) {

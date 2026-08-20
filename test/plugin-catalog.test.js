@@ -126,7 +126,7 @@ test('merges the bundled local extra entries into the online catalog at runtime'
     const repository = url.pathname.split('/').filter(Boolean).slice(0, 2).join('/')
     const plugin = online.catalog.plugins.find((candidate) => candidate.repository.toLowerCase() === repository.toLowerCase())
     assert.ok(plugin, `online catalog should contain merged local extra entry ${repository}`)
-    assert.equal(plugin.source, 'github')
+    assert.equal(plugin.source, entry.npm === undefined ? 'github' : 'npm')
   }
 })
 
@@ -176,6 +176,6 @@ test('bundled catalog carries the local extra entries', () => {
     const repository = url.pathname.split('/').filter(Boolean).slice(0, 2).join('/')
     const plugin = catalog.plugins.find((p) => p.repository.toLowerCase() === repository.toLowerCase())
     assert.ok(plugin, `bundled catalog should contain local extra entry ${repository}`)
-    assert.equal(plugin.source, 'github')
+    assert.equal(plugin.source, entry.npm === undefined ? 'github' : 'npm')
   }
 })
