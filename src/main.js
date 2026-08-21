@@ -3,8 +3,9 @@ import { dirname, join } from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import process from 'node:process'
-import { app, BrowserWindow, Menu, dialog, ipcMain, net, shell } from 'electron'
-import { createInstallerUpdateController } from './auto-update.js'
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
+import { autoUpdater } from 'electron-updater'
+import { createAutoUpdateController } from './auto-update.js'
 import { DSH_RUNTIME_DIRECTORY, readActiveDshRuntime } from './dsh-runtime.js'
 import { createDshUpdateController } from './dsh-update.js'
 import {
@@ -145,26 +146,61 @@ function writeUpdaterLog(level, message) {
   writeLog(level === 'error' ? 'stderr' : 'desktop', `[updater/${level}] ${message}\n`)
 }
 
+function updateSnapshot() {
+  return {
+    state: updateController.state,
+    progress: updateController.progress,
+    version: updateController.version,
+    supported: updateController.supported,
+  }
+}
+
+function broadcastUpdateState() {
+  if (updateController === undefined || mainWindow?.isDestroyed() !== false) return
+  mainWindow.webContents.send('dsh-desktop:update-state', updateSnapshot())
+}
+
+function activateUpdate() {
+  if (updateController === undefined) return
+  if (updateController.state === 'available') return updateController.download()
+  if (updateController.state === 'downloaded') return restartForUpdate()
+  return updateController.check(true)
+}
+
+async function restartForUpdate() {
+  quitting = true
+  restartGeneration += 1
+  pluginOperationController?.abort()
+  defaultPluginInstallController?.abort()
+  dshUpdateController?.abort()
+  clearTimeout(updateCheckTimer)
+  clearTimeout(dshUpdateCheckTimer)
+  await Promise.resolve(server?.stop())
+  logStream?.end()
+  updateController.restart()
+}
+
 function initializeAutoUpdates() {
-  updateController = createInstallerUpdateController({
+  autoUpdater.logger = {
+    info: message => writeUpdaterLog('info', message),
+    warn: message => writeUpdaterLog('warn', message),
+    error: message => writeUpdaterLog('error', message),
+  }
+  updateController = createAutoUpdateController({
     isPackaged: app.isPackaged,
-    platform: process.platform,
-    arch: process.arch,
-    isChinese,
     currentVersion: app.getVersion(),
-    downloadsDirectory: app.getPath('downloads'),
-    fetchImpl: (url, options) => net.fetch(url, options),
+    updater: autoUpdater,
     dialog,
     getWindow: () => mainWindow,
     openReleasePage: url => shell.openExternal(url),
-    openDownloadedFile: path => process.platform === 'linux'
-      ? Promise.resolve(shell.showItemInFolder(path))
-      : shell.openPath(path),
-    onStateChange: buildMenu,
+    onStateChange: () => {
+      buildMenu()
+      broadcastUpdateState()
+    },
     log: writeUpdaterLog,
   })
   if (!updateController.initialize()) {
-    writeUpdaterLog('info', 'No installer is published for this package; the Help menu links to GitHub Releases.')
+    writeUpdaterLog('info', 'Automatic updates are unavailable in this build; the Help menu links to GitHub Releases.')
     return
   }
   updateCheckTimer = setTimeout(() => {
@@ -290,6 +326,16 @@ function installDesktopIpc() {
     activeWorkspace = next.active
     workspaceRoots = next.roots
     if (activeChanged) buildMenu()
+  })
+  ipcMain.handle('dsh-desktop:update-state', (event) => {
+    if (!senderIsHarness(event)) return null
+    return updateSnapshot()
+  })
+  ipcMain.handle('dsh-desktop:update-activate', (event) => {
+    if (!senderIsHarness(event)) return { ok: false, error: 'Untrusted update request' }
+    if (updateController === undefined) return { ok: false, error: 'Updater is unavailable' }
+    void activateUpdate()
+    return { ok: true }
   })
   ipcMain.handle('dsh-desktop:plugins-list', (event) => {
     if (!senderIsPluginManager(event) || dshHome === undefined) return { ok: false, error: 'Untrusted plugin request' }
@@ -816,7 +862,7 @@ function buildMenu() {
         ...(updateItem === undefined ? [] : [{
           label: updateItem.label,
           enabled: updateItem.enabled,
-          click: () => void updateController.check(true),
+          click: () => void activateUpdate(),
         }, { type: 'separator' }]),
         ...(dshUpdateItem === undefined ? [] : [{
           label: dshUpdateItem.label,
@@ -933,7 +979,6 @@ if (!hasLock) {
     restartGeneration += 1
     pluginOperationController?.abort()
     defaultPluginInstallController?.abort()
-    updateController?.abort()
     dshUpdateController?.abort()
     if (updateCheckTimer !== undefined) clearTimeout(updateCheckTimer)
     if (dshUpdateCheckTimer !== undefined) clearTimeout(dshUpdateCheckTimer)

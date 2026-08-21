@@ -29,12 +29,16 @@ test('release builds bundle the prebuilt file viewer plugin and its runtime depe
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/cordis.patch.yml', import.meta.url)), true)
 })
 
-test('release builds publish only user-facing installers', () => {
-  assert.equal(packageJson.build.publish, undefined)
-  assert.deepEqual(packageJson.build.mac.target, ['dmg'])
-  assert.match(packageJson.scripts['dist:mac'], /--mac dmg --publish/)
+test('release builds publish GitHub update metadata with a mac zip target', () => {
+  assert.deepEqual(packageJson.build.publish, {
+    provider: 'github',
+    owner: 'liguobao',
+    repo: 'dsh-desktop',
+  })
+  assert.deepEqual(packageJson.build.mac.target, ['dmg', 'zip'])
+  assert.match(packageJson.scripts['dist:mac'], /--mac dmg zip --publish/)
   assert.equal(packageJson.build.mac.artifactName, 'DSH-Desktop-v${version}-macos-${arch}.${ext}')
-  assert.equal(packageJson.dependencies['electron-updater'], undefined)
+  assert.match(packageJson.dependencies['electron-updater'], /^\^?\d+\.\d+\.\d+/)
 })
 
 test('macOS DMG ships the install notes with the copyable quarantine command', () => {

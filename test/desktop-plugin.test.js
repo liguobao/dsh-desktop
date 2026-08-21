@@ -35,7 +35,9 @@ test('client adapter exposes native actions without spawning local processes', (
   assert.match(source, /workspaces\.openPath = openPath/)
   assert.match(source, /bridge\.openPath\(path, 'auto'\)/)
   assert.match(source, /bridge\.publishWorkspaceContext/)
-  assert.doesNotMatch(source, /conversation\.session\.header\.utilities/)
+  assert.match(source, /conversation\.session\.header\.utilities/)
+  assert.match(source, /require\('react'\)/)
+  assert.match(source, /dsh-desktop-update/)
   assert.doesNotMatch(source, /dsh-desktop-workspace-editor/)
   assert.match(source, /installWorkspaceMenuActions/)
   assert.match(source, /'editor', pendingPath, 'editor'/)
@@ -72,10 +74,11 @@ test('client adapter replaces and restores the Harness path action at runtime', 
     window: { __ModuleLoader__: { load: value => { registration = value } } },
   })
   vm.runInContext(source, context)
-
-  assert.equal(registration.id, '@dsh-desktop/integration')
-  const plugin = registration.factory(() => assert.fail('client adapter should not require UI modules'))
-  assert.deepEqual(Array.from(plugin.inject), ['sessions', 'workspaces', 'locale'])
+  const plugin = registration.factory(name => {
+    if (name === 'react') return {}
+    assert.fail(`client adapter should not require ${name}`)
+  })
+  assert.deepEqual(Array.from(plugin.inject), ['sessions', 'workspaces', 'locale', 'slots'])
 
   const subscribers = []
   const originalOpenPath = async () => { throw new Error('unexpected fallback') }

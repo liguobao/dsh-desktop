@@ -21,7 +21,7 @@
     "check": "node --check src/main.js && node --check src/auto-update.js && node --check src/dsh-runtime.js && node --check src/dsh-update.js && node --check src/desktop-integration.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/plugin-catalog.js && node --check src/plugin-management.js && node --check src/startup-progress.js && node --check src/parent-watch.cjs && node --check src/preload.cjs && node --check src/plugin-preload.cjs && node --check src/pages/manager-ui.js && node --check src/pages/plugins-page.js && node --check src/plugins/dsh-desktop-integration/lib/index.js && node --check src/plugins/dsh-desktop-integration/lib/client.js && node --check scripts/generate-plugin-catalog.mjs",
     "dist": "electron-builder --publish never",
     "dist:linux": "electron-builder --linux AppImage --publish never",
-    "dist:mac": "electron-builder --mac dmg --publish never",
+    "dist:mac": "electron-builder --mac dmg zip --publish never",
     "dist:windows": "electron-builder --win --publish never"
   },
   "dependencies": {
@@ -47,6 +47,7 @@
     "@deepseek-ai/dsh-workflow": "0.1.0-rc.8",
     "dsh-file-viewer": "github:liguobao/dsh-file-viewer#v0.2.3",
     "dsh-remote": "github:liguobao/deepseek-harness-remote#v0.3.21",
+    "electron-updater": "^6.8.9",
     "pnpm": "11.21.0",
     "semver": "7.7.3",
     "yaml": "2.9.0"
@@ -59,6 +60,11 @@
   "build": {
     "appId": "io.github.dshdesktop.app",
     "productName": "DSH Desktop",
+    "publish": {
+      "provider": "github",
+      "owner": "liguobao",
+      "repo": "dsh-desktop"
+    },
     "asar": false,
     "npmRebuild": false,
     "files": [
@@ -76,7 +82,8 @@
       "icon": "build/icon.png",
       "artifactName": "DSH-Desktop-v${version}-macos-${arch}.${ext}",
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",

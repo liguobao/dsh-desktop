@@ -3,19 +3,26 @@ window.__ModuleLoader__.load({
   factory: (require) => {
     const module = { exports: {} }
     const bridge = globalThis.dshDesktop
+    const React = require('react')
 
     const NS = 'dsh-desktop'
     const STYLE_ID = '@dsh-desktop/integration/actions'
     const WORKSPACE_ACTIONS_MARKER = 'dshDesktopWorkspaceActions'
-    const inject = ['sessions', 'workspaces', 'locale']
+    const inject = ['sessions', 'workspaces', 'locale', 'slots']
     const dictionaries = {
       zh: {
         'open.editor': '用编辑器打开',
         'open.fileManager': '打开文件夹',
+        'update.download': '下载 v{version}',
+        'update.downloading': '下载中 {progress}%',
+        'update.restart': '重启以更新',
       },
       en: {
         'open.editor': 'Open in Editor',
         'open.fileManager': 'Open Folder',
+        'update.download': 'Download v{version}',
+        'update.downloading': 'Downloading {progress}%',
+        'update.restart': 'Restart to Update',
       },
     }
 
@@ -50,6 +57,9 @@ window.__ModuleLoader__.load({
       style.dataset.pluginCss = STYLE_ID
       style.textContent = [
         '.dshDesktopWorkspaceSeparator{height:1px;background:var(--dsw-alias-border-l3);margin:4px 8px}',
+        '.dshDesktopUpdateButton{display:inline-flex;align-items:center;justify-content:center;height:28px;padding:0 12px;flex:none;border:1px solid var(--dsw-alias-border-l3);border-radius:999px;background:transparent;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:1;cursor:pointer}',
+        '.dshDesktopUpdateButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+        '.dshDesktopUpdateButton:disabled{opacity:.55;cursor:default}',
       ].join('')
       document.head.append(style)
       return () => style.remove()
@@ -160,6 +170,61 @@ window.__ModuleLoader__.load({
       }
     }
 
+    function updateButtonLabel(snapshot, t) {
+      if (snapshot.state === 'available') return t('update.download', { version: snapshot.version })
+      if (snapshot.state === 'downloading') return t('update.downloading', { progress: snapshot.progress })
+      return t('update.restart')
+    }
+
+    function createUpdateButton(t) {
+      const { createElement, useEffect, useState } = React
+      return function UpdateButton() {
+        const [snapshot, setSnapshot] = useState(null)
+
+        useEffect(() => {
+          let disposed = false
+          bridge.getUpdateState().then(state => {
+            if (!disposed && state !== null) setSnapshot(state)
+          }).catch(() => {})
+          const unsubscribe = bridge.onUpdateState(state => {
+            if (!disposed && state !== null) setSnapshot(state)
+          })
+          return () => {
+            disposed = true
+            unsubscribe()
+          }
+        }, [])
+
+        if (snapshot === null || snapshot.supported !== true) return null
+        const visible = snapshot.state === 'available'
+          || snapshot.state === 'downloading'
+          || snapshot.state === 'downloaded'
+        if (!visible) return null
+
+        const enabled = snapshot.state !== 'downloading'
+        return createElement('button', {
+          type: 'button',
+          className: 'dshDesktopUpdateButton',
+          disabled: !enabled,
+          onClick: enabled ? () => { void bridge.activateUpdate().catch(() => {}) } : undefined,
+        }, updateButtonLabel(snapshot, t))
+      }
+    }
+
+    function installUpdateButton(ctx, t) {
+      if (typeof bridge?.getUpdateState !== 'function'
+        || typeof bridge?.activateUpdate !== 'function'
+        || typeof bridge?.onUpdateState !== 'function') return () => {}
+
+      const UpdateButton = createUpdateButton(t)
+      const dispose = ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
+        name: 'conversation.session.header.utilities',
+        id: 'dsh-desktop-update',
+        order: 0,
+      }, UpdateButton))
+      return typeof dispose === 'function' ? dispose : () => {}
+    }
+
     function apply(ctx) {
       if (bridge === undefined
         || typeof bridge.openPath !== 'function'
@@ -170,8 +235,10 @@ window.__ModuleLoader__.load({
 
       ctx.effect(installStyle, 'dsh-desktop: native action styles')
 
-      // Harness exposes a slot for the header utility, but not for children of
-      // the Workspace ellipsis menu. Keep this adapter scoped to that portal.
+      // The header utility slot is the official additive seat; the update
+      // button lands there. The Workspace ellipsis menu has no child slot, so
+      // that adapter keeps its MutationObserver portal below.
+      ctx.effect(() => installUpdateButton(ctx, t), 'dsh-desktop: update button')
       ctx.effect(() => installWorkspaceMenuActions(ctx.workspaces, t), 'dsh-desktop: workspace menu actions')
 
       ctx.effect(() => {

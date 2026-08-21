@@ -96,6 +96,15 @@ jobs:
           if ($setup.Count -ne 1) { throw "Expected one Windows setup package, found $($setup.Count)" }
           if ($portable.Count -ne 1) { throw "Expected one Windows portable package, found $($portable.Count)" }
 
+      - name: Verify macOS package variants
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          dmg=$(find dist -maxdepth 1 -name '*.dmg' | wc -l | tr -d ' ')
+          zip=$(find dist -maxdepth 1 -name '*.zip' | wc -l | tr -d ' ')
+          if [ "$dmg" -ne 1 ]; then echo "Expected one dmg, found $dmg" >&2; exit 1; fi
+          if [ "$zip" -ne 1 ]; then echo "Expected one zip, found $zip" >&2; exit 1; fi
+
       - name: Upload packages
         uses: actions/upload-artifact@v7
         with:
@@ -105,6 +114,8 @@ jobs:
             dist/*.AppImage
             dist/*.dmg
             dist/*.exe
+            dist/*.zip
+            dist/*.yml
 
   release:
     name: Publish GitHub Release
