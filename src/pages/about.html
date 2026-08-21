@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'">
+    <title>About DSH Desktop</title>
+    <link rel="stylesheet" href="about.css">
+    <script src="about-page.js" defer></script>
+  </head>
+  <body>
+    <main class="about-shell">
+      <header class="product-heading">
+        <img src="../../assets/icon.png" alt="">
+        <div>
+          <h1>DSH Desktop</h1>
+          <p id="product-description">Community desktop wrapper for DeepSeek Harness</p>
+        </div>
+      </header>
+
+      <section aria-labelledby="versions-heading">
+        <div class="section-heading">
+          <h2 id="versions-heading">Versions</h2>
+          <p id="release-policy">The bundled Harness version updates with DSH Desktop releases.</p>
+        </div>
+        <dl class="version-list">
+          <div class="version-row">
+            <dt>DSH Desktop</dt>
+            <dd id="desktop-version">—</dd>
+          </div>
+          <div class="version-row">
+            <dt>DeepSeek Harness</dt>
+            <dd id="dsh-version">—</dd>
+          </div>
+          <div class="version-row">
+            <dt>dsh-remote</dt>
+            <dd id="remote-version">—</dd>
+          </div>
+          <div class="version-row">
+            <dt>dsh-file-viewer</dt>
+            <dd id="file-viewer-version">—</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section aria-labelledby="source-heading">
+        <div class="section-heading">
+          <h2 id="source-heading">Source code</h2>
+          <p id="source-description">View releases, report issues, or contribute on GitHub.</p>
+        </div>
+        <a class="source-link" id="project-link" href="https://github.com/liguobao/dsh-desktop" target="_blank" rel="noreferrer">
+          <span>
+            <strong>GitHub</strong>
+            <code id="project-url">github.com/liguobao/dsh-desktop</code>
+          </span>
+          <span class="external-mark" aria-hidden="true">↗</span>
+        </a>
+      </section>
+
+      <footer>
+        <p id="community-note">An independent community project, not an official DeepSeek application.</p>
+      </footer>
+    </main>
+  </body>
+</html>

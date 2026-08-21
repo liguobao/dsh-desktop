@@ -75,7 +75,7 @@ test('seeds the bundled remote plugin with runtime dependencies and an updateabl
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'index.js'), 'utf8'), 'export {}\n')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'werift', 'package.json'))).version, '0.24.4')
-  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /9df2052098ee264edc0d0b9245367a063458c81e/)
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /c049c8eb669765f82f90266c9f9c3a0166a7d734/)
 
   const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   profileManifest.dependencies['dsh-remote'] = 'github:liguobao/deepseek-harness-remote#newer-commit'
@@ -240,15 +240,15 @@ test('upgrades the previous bundled remote release without overwriting online up
   const sourceDir = join(directory, 'app', 'node_modules', 'dsh-remote')
   ensureProfileInitialized(dshHome)
   const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
-  profileManifest.dependencies['dsh-remote'] = 'github:liguobao/deepseek-harness-remote#4e4ab9e0162273b5c3eb3a8bbb90929ec58c2a7c'
+  profileManifest.dependencies['dsh-remote'] = 'github:liguobao/deepseek-harness-remote#9df2052098ee264edc0d0b9245367a063458c81e'
   profileManifest.dsh.profile.bundles.push('dsh-remote')
   writeJson(join(profileDir, 'package.json'), profileManifest)
   writeJson(join(profileDir, 'node_modules', 'dsh-remote', 'package.json'), {
-    name: 'dsh-remote', version: '0.3.19', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'dsh-remote', version: '0.3.23', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'old.js'), 'broken\n')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'dsh-remote', version: '0.3.23', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'dsh-remote', version: '0.3.27', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'fixed.js'), 'fixed\n')
 
@@ -257,8 +257,8 @@ test('upgrades the previous bundled remote release without overwriting online up
   assert.equal(existsSync(join(profileDir, 'node_modules', 'dsh-remote', 'old.js')), false)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'fixed.js'), 'utf8'), 'fixed\n')
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, 'github:liguobao/deepseek-harness-remote#9df2052098ee264edc0d0b9245367a063458c81e')
-  assert.equal(plugin.version, '0.3.23')
+  assert.equal(plugin.requested, 'github:liguobao/deepseek-harness-remote#c049c8eb669765f82f90266c9f9c3a0166a7d734')
+  assert.equal(plugin.version, '0.3.27')
 })
 
 test('accepts GitHub repository addresses with optional revisions', () => {

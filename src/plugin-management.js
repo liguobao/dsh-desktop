@@ -19,9 +19,11 @@ const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
 /** Bundled plugins installed automatically on a fresh profile. GitHub specs update online. */
 export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote', 'github:liguobao/dsh-file-viewer']
-export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#9df2052098ee264edc0d0b9245367a063458c81e'
+export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#c049c8eb669765f82f90266c9f9c3a0166a7d734'
 export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#eacc407e205ffa4a37fbc36b0b99927a4ad68020'
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
+  'github:liguobao/deepseek-harness-remote#v0.3.23',
+  'github:liguobao/deepseek-harness-remote#9df2052098ee264edc0d0b9245367a063458c81e',
   'github:liguobao/deepseek-harness-remote#v0.3.21',
   'github:liguobao/deepseek-harness-remote#5f5e8dfa7f0f7a9f45c1e6165ba23fd28b577d6d',
   'github:liguobao/deepseek-harness-remote#v0.3.20',

@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop",
-  "version": "0.1.35",
+  "version": "0.1.36",
   "description": "Community desktop wrapper for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "src/main.js",
@@ -18,7 +18,7 @@
     "start": "electron .",
     "test": "node --test",
     "catalog:generate": "node scripts/generate-plugin-catalog.mjs",
-    "check": "node --check src/main.js && node --check src/auto-update.js && node --check src/dsh-runtime.js && node --check src/dsh-update.js && node --check src/desktop-integration.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/plugin-catalog.js && node --check src/plugin-management.js && node --check src/startup-progress.js && node --check src/parent-watch.cjs && node --check src/preload.cjs && node --check src/plugin-preload.cjs && node --check src/pages/manager-ui.js && node --check src/pages/plugins-page.js && node --check src/plugins/dsh-desktop-integration/lib/index.js && node --check src/plugins/dsh-desktop-integration/lib/client.js && node --check scripts/generate-plugin-catalog.mjs",
+    "check": "node --check src/main.js && node --check src/auto-update.js && node --check src/desktop-integration.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/plugin-catalog.js && node --check src/plugin-management.js && node --check src/startup-progress.js && node --check src/parent-watch.cjs && node --check src/preload.cjs && node --check src/plugin-preload.cjs && node --check src/pages/about-page.js && node --check src/pages/manager-ui.js && node --check src/pages/plugins-page.js && node --check src/plugins/dsh-desktop-integration/lib/index.js && node --check src/plugins/dsh-desktop-integration/lib/client.js && node --check scripts/generate-plugin-catalog.mjs",
     "dist": "electron-builder --publish never",
     "dist:linux": "electron-builder --linux AppImage --publish never",
     "dist:mac": "electron-builder --mac dmg --publish never",
@@ -46,7 +46,7 @@
     "@deepseek-ai/dsh-timeout": "0.1.1-rc.2",
     "@deepseek-ai/dsh-workflow": "0.1.1-rc.2",
     "dsh-file-viewer": "github:liguobao/dsh-file-viewer#v0.2.3",
-    "dsh-remote": "github:liguobao/deepseek-harness-remote#v0.3.23",
+    "dsh-remote": "github:liguobao/deepseek-harness-remote#v0.3.27",
     "pnpm": "11.21.0",
     "semver": "7.7.3",
     "yaml": "2.9.0"

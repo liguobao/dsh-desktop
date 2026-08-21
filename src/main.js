@@ -1,12 +1,10 @@
-import { createWriteStream, existsSync, mkdirSync, statSync } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import process from 'node:process'
 import { app, BrowserWindow, Menu, dialog, ipcMain, net, shell } from 'electron'
 import { createInstallerUpdateController } from './auto-update.js'
-import { DSH_RUNTIME_DIRECTORY, readActiveDshRuntime } from './dsh-runtime.js'
-import { createDshUpdateController } from './dsh-update.js'
 import {
   authorizeWorkspacePath,
   detectEditors,
@@ -37,6 +35,7 @@ import {
 import { loadingStateScript, normalizeProgress } from './startup-progress.js'
 
 const require = createRequire(import.meta.url)
+const PROJECT_URL = 'https://github.com/liguobao/dsh-desktop'
 let isChinese = false
 let copy
 let harnessEnv = process.env
@@ -70,9 +69,7 @@ function setLocale(locale) {
       nativeOpenFailed: '无法打开本地路径',
       plugins: '插件',
       pluginManager: 'DSH 插件管理',
-      dshRollback: '新版 DSH 启动失败，正在恢复内置版本…',
-      dshRollbackTitle: '已恢复内置 DSH',
-      dshRollbackMessage: version => `无法使用更新后的 DSH ${version}，已自动恢复 DSH Desktop 内置版本。`,
+      about: '关于 DSH Desktop',
     } : {
       preparing: 'Preparing the desktop window…',
       preparingPlugins: 'Preparing bundled plugins…',
@@ -100,9 +97,7 @@ function setLocale(locale) {
       nativeOpenFailed: 'Could Not Open Local Path',
       plugins: 'Plugins',
       pluginManager: 'DSH Plugin Manager',
-      dshRollback: 'The updated DSH failed to start. Restoring the bundled version…',
-      dshRollbackTitle: 'Bundled DSH Restored',
-      dshRollbackMessage: version => `DSH ${version} could not start, so DSH Desktop restored its bundled version automatically.`,
+      about: 'About DSH Desktop',
     }
 }
 
@@ -111,6 +106,7 @@ setLocale('en')
 let mainWindow
 let splashWindow
 let pluginWindow
+let aboutWindow
 let server
 let harnessOrigin
 let quitting = false
@@ -130,10 +126,6 @@ let pluginOperationController
 let defaultPluginInstallController
 let updateController
 let updateCheckTimer
-let dshRuntimeRoot
-let activeDshRuntime
-let dshUpdateController
-let dshUpdateCheckTimer
 
 function writeLog(source, text) {
   const prefix = `[${new Date().toISOString()}] [${source}] `
@@ -171,36 +163,6 @@ function initializeAutoUpdates() {
     updateCheckTimer = undefined
     if (!quitting) void updateController.check(false)
   }, 10_000)
-}
-
-function writeDshUpdaterLog(level, message) {
-  writeLog(level === 'error' ? 'stderr' : 'desktop', `[dsh-updater/${level}] ${message}\n`)
-}
-
-function initializeDshUpdates() {
-  dshUpdateController = createDshUpdateController({
-    initialRuntime: activeDshRuntime,
-    runtimeRoot: dshRuntimeRoot,
-    pnpmEntry: resolvePnpmEntry(),
-    execPath: process.execPath,
-    env: harnessEnv,
-    isChinese,
-    dialog,
-    getWindow: () => mainWindow,
-    onRuntimeChanged: async runtime => {
-      activeDshRuntime = runtime
-      writeDshUpdaterLog('info', `Switching to DSH ${runtime.version} from the ${runtime.source} runtime.`)
-      await startHarness(copy.restarting)
-    },
-    onStateChange: buildMenu,
-    onOutput: writeLog,
-    log: writeDshUpdaterLog,
-    isOperationBlocked: () => pluginOperationRunning,
-  })
-  dshUpdateCheckTimer = setTimeout(() => {
-    dshUpdateCheckTimer = undefined
-    if (!quitting) void dshUpdateController.check(false)
-  }, 30_000)
 }
 
 function selectedDesktopEditor() {
@@ -376,9 +338,7 @@ function installDesktopIpc() {
 
 async function runPluginOperation(action) {
   if (dshHome === undefined) return { ok: false, error: 'Harness home is unavailable' }
-  if (pluginOperationRunning || (dshUpdateController !== undefined && dshUpdateController.state !== 'idle')) {
-    return { ok: false, error: 'Another plugin or DSH operation is already running' }
-  }
+  if (pluginOperationRunning) return { ok: false, error: 'Another plugin operation is already running' }
   pluginOperationRunning = true
   const controller = new AbortController()
   pluginOperationController = controller
@@ -407,13 +367,26 @@ function resolveBundledDshManifest() {
 }
 
 function resolveDshEntry() {
-  if (activeDshRuntime === undefined) {
-    const manifest = resolveBundledDshManifest()
-    const entry = join(dirname(manifest), 'lib', 'bin.js')
-    if (!existsSync(entry)) throw new Error(`DeepSeek Harness entry point is missing: ${entry}`)
-    return entry
+  const entry = join(dirname(resolveBundledDshManifest()), 'lib', 'bin.js')
+  if (!existsSync(entry)) throw new Error(`DeepSeek Harness entry point is missing: ${entry}`)
+  return entry
+}
+
+function bundledPackageVersion(packageName) {
+  const manifest = JSON.parse(readFileSync(require.resolve(`${packageName}/package.json`), 'utf8'))
+  if (typeof manifest.version !== 'string' || manifest.version.trim() === '') {
+    throw new Error(`Bundled package ${packageName} has no version`)
   }
-  return activeDshRuntime.entry
+  return manifest.version
+}
+
+function aboutVersions() {
+  return {
+    desktop: app.getVersion(),
+    dsh: bundledPackageVersion('@deepseek-ai/dsh'),
+    remote: bundledPackageVersion('dsh-remote'),
+    fileViewer: bundledPackageVersion('dsh-file-viewer'),
+  }
 }
 
 function resolvePnpmEntry() {
@@ -570,6 +543,7 @@ function createWindow() {
   window.on('closed', () => {
     mainWindow = undefined
     if (pluginWindow?.isDestroyed() === false) pluginWindow.close()
+    if (aboutWindow?.isDestroyed() === false) aboutWindow.close()
   })
   return window
 }
@@ -624,6 +598,60 @@ function showPluginManager() {
   })
   void pluginWindow.loadFile(pagePath('plugins.html'), {
     query: { lang: isChinese ? 'zh' : 'en' },
+  })
+}
+
+function isProjectUrl(url) {
+  try {
+    return new URL(url).href === `${PROJECT_URL}/`
+  } catch {
+    return false
+  }
+}
+
+function showAbout() {
+  if (focusManagerWindow(aboutWindow)) return
+  aboutWindow = new BrowserWindow({
+    width: 600,
+    height: 560,
+    minWidth: 480,
+    minHeight: 500,
+    show: false,
+    autoHideMenuBar: true,
+    title: copy.about,
+    icon: join(import.meta.dirname, '..', 'assets', 'icon.png'),
+    backgroundColor: '#f4f7fc',
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+    },
+  })
+  const window = aboutWindow
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (isProjectUrl(url)) void shell.openExternal(PROJECT_URL)
+    return { action: 'deny' }
+  })
+  window.webContents.on('will-navigate', (event, url) => {
+    try {
+      if (fileURLToPath(url) === pagePath('about.html')) return
+    } catch {
+      // Reject non-file and malformed navigation below.
+    }
+    event.preventDefault()
+    if (isProjectUrl(url)) void shell.openExternal(PROJECT_URL)
+  })
+  window.once('ready-to-show', () => window.show())
+  window.on('closed', () => {
+    if (aboutWindow === window) aboutWindow = undefined
+  })
+  void window.loadFile(pagePath('about.html'), {
+    query: {
+      lang: isChinese ? 'zh' : 'en',
+      ...aboutVersions(),
+    },
   })
 }
 
@@ -716,20 +744,6 @@ async function startHarness(message = copy.preparing) {
   } catch (error) {
     if (generation === restartGeneration) {
       await server?.stop()
-      if (dshUpdateController?.useBundledFallback()) {
-        const failedVersion = activeDshRuntime?.version ?? 'unknown'
-        activeDshRuntime = dshUpdateController.runtime
-        writeDshUpdaterLog('error', `DSH ${failedVersion} failed to start; falling back to bundled ${activeDshRuntime.version}.`)
-        const restored = await startHarness(copy.dshRollback)
-        if (restored && mainWindow?.isDestroyed() === false) {
-          void dialog.showMessageBox(mainWindow, {
-            type: 'warning',
-            title: copy.dshRollbackTitle,
-            message: copy.dshRollbackMessage(failedVersion),
-          })
-        }
-        return false
-      }
       await showError(copy.startupFailed, error)
     }
     return false
@@ -739,8 +753,6 @@ async function startHarness(message = copy.preparing) {
 function buildMenu() {
   const editor = selectedDesktopEditor()
   const updateItem = updateController?.menuItem()
-  const dshUpdateItem = dshUpdateController?.menuItem()
-  const dshRestoreItem = dshUpdateController?.restoreItem()
   const editorItems = editors.length === 0
     ? [{ label: copy.noEditor, enabled: false }]
     : [
@@ -759,7 +771,20 @@ function buildMenu() {
         })),
       ]
   const template = [
-    ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
+    ...(process.platform === 'darwin' ? [{
+        label: app.name,
+        submenu: [
+          { label: copy.about, click: showAbout },
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit' },
+        ],
+      }] : []),
     { role: 'editMenu' },
     {
       label: copy.workspace,
@@ -818,19 +843,9 @@ function buildMenu() {
           enabled: updateItem.enabled,
           click: () => void updateController.check(true),
         }, { type: 'separator' }]),
-        ...(dshUpdateItem === undefined ? [] : [{
-          label: dshUpdateItem.label,
-          enabled: dshUpdateItem.enabled,
-          click: () => void dshUpdateController.check(true),
-        }]),
-        ...(dshRestoreItem === undefined ? [] : [{
-          label: dshRestoreItem.label,
-          enabled: dshRestoreItem.enabled,
-          click: () => void dshUpdateController.restoreBundled(),
-        }]),
-        ...(dshUpdateItem === undefined ? [] : [{ type: 'separator' }]),
         { label: copy.openLogs, click: () => { if (logPath !== undefined) void shell.openPath(dirname(logPath)) } },
         { label: 'DeepSeek Harness', click: () => void shell.openExternal('https://github.com/deepseek-ai/deepseek-harness') },
+        ...(process.platform === 'darwin' ? [] : [{ type: 'separator' }, { label: copy.about, click: showAbout }]),
       ],
     },
   ]
@@ -856,15 +871,7 @@ if (!hasLock) {
     logPath = join(logsDirectory, 'desktop.log')
     logStream = createWriteStream(logPath, { flags: 'a' })
     writeLog('desktop', `DSH Desktop ${app.getVersion()} starting on ${process.platform}/${process.arch}.\n`)
-    dshRuntimeRoot = join(app.getPath('userData'), DSH_RUNTIME_DIRECTORY)
-    activeDshRuntime = readActiveDshRuntime({
-      runtimeRoot: dshRuntimeRoot,
-      bundledManifestPath: resolveBundledDshManifest(),
-    })
-    if (activeDshRuntime.managedError !== undefined) {
-      writeDshUpdaterLog('error', `Ignoring invalid managed DSH runtime: ${activeDshRuntime.managedError}`)
-    }
-    writeDshUpdaterLog('info', `Using DSH ${activeDshRuntime.version} from the ${activeDshRuntime.source} runtime.`)
+    writeLog('desktop', `Using bundled DSH ${bundledPackageVersion('@deepseek-ai/dsh')}.\n`)
     dshHome = resolveHarnessHome(process.env, app.getPath('home'), app.getPath('home'))
     harnessEnv = prepareHarnessToolchain({
       directory: join(app.getPath('userData'), 'toolchain'),
@@ -906,7 +913,6 @@ if (!hasLock) {
       writeLog('stderr', `Bundled file viewer plugin preparation failed: ${detail}\n`)
     }
     initializeAutoUpdates()
-    initializeDshUpdates()
     buildMenu()
     void startHarness().then(started => {
       // A missing default plugin may require GitHub and pnpm network access. Keep that
@@ -934,9 +940,7 @@ if (!hasLock) {
     pluginOperationController?.abort()
     defaultPluginInstallController?.abort()
     updateController?.abort()
-    dshUpdateController?.abort()
     if (updateCheckTimer !== undefined) clearTimeout(updateCheckTimer)
-    if (dshUpdateCheckTimer !== undefined) clearTimeout(dshUpdateCheckTimer)
     void Promise.resolve(server?.stop()).finally(() => {
       logStream?.end()
       app.quit()

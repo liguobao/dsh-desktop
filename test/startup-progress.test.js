@@ -45,3 +45,11 @@ test('bundled plugins are prepared locally after the splash appears and before H
   assert.ok(bundled > splash)
   assert.ok(start > bundled)
 })
+
+test('DSH always launches from the app bundle without an independent updater', () => {
+  const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8')
+
+  assert.match(source, /entry: resolveDshEntry\(\)/)
+  assert.match(source, /Using bundled DSH/)
+  assert.doesNotMatch(source, /createDshUpdateController|dshUpdateController|activeDshRuntime|DSH_RUNTIME_DIRECTORY/)
+})
