@@ -46,8 +46,6 @@ jobs:
             artifact: macos-arm64
 
     runs-on: ${{ matrix.runner }}
-    env:
-      CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
     steps:
       - name: Check out repository
@@ -71,6 +69,20 @@ jobs:
 
       - name: Run syntax checks
         run: npm run check
+
+      - name: Configure macOS signing
+        if: runner.os == 'macOS'
+        run: |
+          if [ -n "${{ secrets.MAC_CSC_LINK }}" ]; then
+            echo "CSC_LINK=${{ secrets.MAC_CSC_LINK }}" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=${{ secrets.MAC_CSC_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+            APPLE_API_KEY_FILE="$RUNNER_TEMP/AuthKey.p8"
+            echo "${{ secrets.APPLE_API_KEY }}" | base64 --decode > "$APPLE_API_KEY_FILE"
+            echo "APPLE_API_KEY=$APPLE_API_KEY_FILE" >> "$GITHUB_ENV"
+            echo "APPLE_API_KEY_ID=${{ secrets.APPLE_API_KEY_ID }}" >> "$GITHUB_ENV"
+            echo "APPLE_API_ISSUER=${{ secrets.APPLE_API_ISSUER }}" >> "$GITHUB_ENV"
+            echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> "$GITHUB_ENV"
+          fi
 
       - name: Build packages
         run: npm run ${{ matrix.script }} -- ${{ matrix.arch }}
