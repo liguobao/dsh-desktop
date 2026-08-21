@@ -23,9 +23,9 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-workspace": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-client-locale": "^0.1.1-rc.1",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.1-rc.1",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.1-rc.1",
+    "@deepseek-ai/dsh-client-ui-workspace": "^0.1.1-rc.1"
   }
 }
