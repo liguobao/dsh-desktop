@@ -77,10 +77,14 @@
       "artifactName": "DSH-Desktop-v${version}-macos-${arch}.${ext}",
       "target": [
         "dmg"
-      ]
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "notarize": true
     },
     "dmg": {
-      "sign": false,
+      "sign": true,
       "contents": [
         {
           "x": 130,
