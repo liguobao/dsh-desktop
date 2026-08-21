@@ -19,11 +19,14 @@ const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
 /** Bundled plugins installed automatically on a fresh profile. GitHub specs update online. */
 export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote', 'github:liguobao/dsh-file-viewer']
-export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#4e4ab9e0162273b5c3eb3a8bbb90929ec58c2a7c'
-export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#ed2f9ede3ada97145b3701aa8a09f45fc229f53f'
+export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#5f5e8dfa7f0f7a9f45c1e6165ba23fd28b577d6d'
+export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#eacc407e205ffa4a37fbc36b0b99927a4ad68020'
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
+  'github:liguobao/deepseek-harness-remote#v0.3.21',
+  'github:liguobao/deepseek-harness-remote#v0.3.20',
   'github:liguobao/deepseek-harness-remote#v0.3.19',
   'github:liguobao/deepseek-harness-remote#v0.3.18',
+  'github:liguobao/deepseek-harness-remote#4e4ab9e0162273b5c3eb3a8bbb90929ec58c2a7c',
   'github:liguobao/deepseek-harness-remote#599bd5a4d14b980c8101575eca5c36a12007a2f8',
   'github:liguobao/deepseek-harness-remote#633bf08f9bac174fc6dbe37738786ebb83421c24',
   'github:liguobao/deepseek-harness-remote#3a271eaeaa649647ec27e137fb7321526799a749',
@@ -31,8 +34,10 @@ const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   'github:liguobao/deepseek-harness-remote#da4beadabb57096a66b3ca790fd85a340a0ca899',
 ])
 const LEGACY_BUNDLED_FILE_VIEWER_SPECS = new Set([
+  'github:liguobao/dsh-file-viewer#v0.2.3',
   'github:liguobao/dsh-file-viewer#v0.2.2',
   'github:liguobao/dsh-file-viewer#v0.2.1',
+  'github:liguobao/dsh-file-viewer#ed2f9ede3ada97145b3701aa8a09f45fc229f53f',
   'github:liguobao/dsh-file-viewer#a4d6e2cbf6424a47f93d735070741df391d5ede4',
   'github:liguobao/dsh-file-viewer#605cd34b9e96ad7775f37493b701a601b97efeee',
   'github:liguobao/dsh-file-viewer#4295572d3192fd4685aeda42b34a7ddb4b793754',
