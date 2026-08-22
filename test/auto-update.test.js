@@ -40,6 +40,7 @@ function fixture(overrides = {}) {
   const openedFiles = []
   const downloads = []
   const progress = []
+  const quits = []
   const release = overrides.release ?? releaseFixture()
   const controller = createInstallerUpdateController({
     isPackaged: true,
@@ -64,6 +65,7 @@ function fixture(overrides = {}) {
     getWindow: () => undefined,
     openReleasePage: async url => { openedReleases.push(url) },
     openDownloadedFile: async path => { openedFiles.push(path) },
+    quitApp: () => { quits.push(true) },
     downloadImpl: overrides.downloadImpl ?? (async options => {
       downloads.push(options)
       options.onProgress(42)
@@ -73,7 +75,7 @@ function fixture(overrides = {}) {
     log: overrides.log,
     ...overrides.controller,
   })
-  return { controller, downloads, messages, openedFiles, openedReleases, progress }
+  return { controller, downloads, messages, openedFiles, openedReleases, progress, quits }
 }
 
 test('installer assets map to the packages published for each platform and architecture', () => {
@@ -131,6 +133,42 @@ test('an available update downloads the installer and opens the local file after
   assert.deepEqual(setup.openedFiles, ['/Downloads/DSH-Desktop-v1.1.0-linux-x64.AppImage'])
   assert.equal(setup.controller.state, 'downloaded')
   assert.equal(setup.controller.menuItem().label, 'Show Downloaded AppImage…')
+  assert.equal(setup.quits.length, 1)
+})
+
+test('confirming to open the downloaded installer quits the app', async () => {
+  const setup = fixture({ release: releaseFixture('1.1.0'), responses: [0, 0] })
+
+  await setup.controller.check(true)
+
+  assert.deepEqual(setup.openedFiles, ['/Downloads/DSH-Desktop-v1.1.0-linux-x64.AppImage'])
+  assert.deepEqual(setup.quits, [true])
+})
+
+test('declining to open the downloaded installer keeps the app running', async () => {
+  const setup = fixture({ release: releaseFixture('1.1.0'), responses: [0, 1] })
+
+  await setup.controller.check(false)
+
+  assert.equal(setup.openedFiles.length, 0)
+  assert.equal(setup.quits.length, 0)
+  assert.equal(setup.controller.state, 'downloaded')
+})
+
+test('a failed installer open shows the failure without quitting the app', async () => {
+  const setup = fixture({
+    release: releaseFixture('1.1.0'),
+    responses: [0, 0],
+    controller: {
+      openDownloadedFile: async () => 'open failed',
+    },
+  })
+
+  await setup.controller.check(false)
+
+  assert.equal(setup.messages.at(-1).title, 'Update Download Failed')
+  assert.equal(setup.quits.length, 0)
+  assert.equal(setup.controller.state, 'downloaded')
 })
 
 test('background Release check errors are logged without interrupting the user', async () => {

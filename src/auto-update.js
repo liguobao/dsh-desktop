@@ -24,8 +24,8 @@ function updateCopy(isChinese, platform) {
       readyTitle: '安装包已下载',
       readyMessage: version => `DSH Desktop ${version} 已保存到本地`,
       readyDetail: path => revealOnly
-        ? `文件位于 ${path}。请退出应用后，用它替换当前 AppImage 并重新打开。`
-        : `文件位于 ${path}。请打开安装包，按系统提示完成更新。`,
+        ? `文件位于 ${path}。应用将自动退出，请用它替换当前 AppImage 后重新打开。`
+        : `文件位于 ${path}。打开安装包后应用将自动退出，请按系统提示完成更新。`,
       open: revealOnly ? '在文件夹中显示' : '打开安装包',
       noUpdateTitle: '已是最新版本',
       noUpdateMessage: version => `DSH Desktop ${version} 已是最新版本。`,
@@ -46,8 +46,8 @@ function updateCopy(isChinese, platform) {
       readyTitle: 'Installer Downloaded',
       readyMessage: version => `DSH Desktop ${version} has been saved locally`,
       readyDetail: path => revealOnly
-        ? `The file is at ${path}. Quit the app, replace the current AppImage with this file, and launch it again.`
-        : `The file is at ${path}. Open the installer and follow the system prompts to finish updating.`,
+        ? `The file is at ${path}. The app will quit automatically; replace the current AppImage with this file and launch it again.`
+        : `The file is at ${path}. The app will quit after you open the installer; follow the system prompts to finish updating.`,
       open: revealOnly ? 'Show in Folder' : 'Open Installer',
       noUpdateTitle: 'You’re Up to Date',
       noUpdateMessage: version => `DSH Desktop ${version} is the latest version.`,
@@ -217,6 +217,7 @@ export function createInstallerUpdateController({
   getWindow,
   openReleasePage,
   openDownloadedFile,
+  quitApp = () => {},
   onStateChange = () => {},
   log = () => {},
   downloadImpl = downloadInstallerAsset,
@@ -282,6 +283,7 @@ export function createInstallerUpdateController({
     try {
       const error = await openDownloadedFile(downloadedPath)
       if (typeof error === 'string' && error !== '') throw new Error(error)
+      quitApp()
     } catch (error) {
       await showFailure(error, true)
     }

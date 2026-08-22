@@ -152,6 +152,7 @@ function initializeAutoUpdates() {
     openDownloadedFile: path => process.platform === 'linux'
       ? Promise.resolve(shell.showItemInFolder(path))
       : shell.openPath(path),
+    quitApp: () => app.quit(),
     onStateChange: buildMenu,
     log: writeUpdaterLog,
   })
