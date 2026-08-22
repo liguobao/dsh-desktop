@@ -24,6 +24,8 @@ An independent, open-source desktop wrapper for [DeepSeek Harness](https://githu
 
 Download the latest package from [GitHub Releases](https://github.com/liguobao/dsh-desktop/releases):
 
+If GitHub downloads are slow or unavailable, use the [Quark Cloud Drive mirror](https://pan.quark.cn/s/a837649635e2#/list/share/b4cc08109f3d47f78bc816ef2dbecd4f) for downloads in mainland China.
+
 | Platform | Package |
 | --- | --- |
 | Windows x64 installer | `DSH-Desktop-vX.Y.Z-windows-x64-setup.exe` |

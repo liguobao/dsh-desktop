@@ -24,6 +24,8 @@
 
 从 [GitHub Releases](https://github.com/liguobao/dsh-desktop/releases) 下载最新版本：
 
+如果 GitHub 下载不便，可使用[夸克网盘国内下载地址](https://pan.quark.cn/s/a837649635e2#/list/share/b4cc08109f3d47f78bc816ef2dbecd4f)。
+
 | 平台 | 安装包 |
 | --- | --- |
 | Windows x64 安装版 | `DSH-Desktop-vX.Y.Z-windows-x64-setup.exe` |
