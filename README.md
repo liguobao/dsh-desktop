@@ -9,9 +9,10 @@ An independent, open-source desktop app for [DeepSeek Harness](https://github.co
 ## Features
 
 - Ready-to-use packages with no separate Node.js, npm, or `npx` setup.
-- Bundled, version-matched DeepSeek Harness, Remote, and File Viewer components.
+- Bundled, version-matched DeepSeek Harness, Remote, File Viewer, and Codex Subagent components.
 - Read-only previews for source code, text, Markdown, images, PDFs, CSV, JSON, and YAML.
 - Remote session access from another authorized computer, phone, tablet, or browser.
+- Delegate isolated tasks to Codex through the built-in `subagent_codex` tool.
 - Plugin discovery and installation from npm or GitHub.
 - Workspace actions for VS Code, Cursor, VSCodium, Zed, and the system file manager.
 - Local-only Harness service, restricted Electron renderers, and external links opened in the system browser.

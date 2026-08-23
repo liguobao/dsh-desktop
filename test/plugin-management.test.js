@@ -8,6 +8,7 @@ import test from 'node:test'
 import {
   ensureDefaultPlugins,
   ensureProfileInitialized,
+  installBundledCodexSubagentPlugin,
   installBundledFileViewerPlugin,
   installPlugin,
   installBundledRemotePlugin,
@@ -138,6 +139,29 @@ test('seeds the bundled GitHub file viewer with its runtime dependency closure',
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'markdown-it', 'package.json'))).version, '14.1.0')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], 'github:liguobao/dsh-file-viewer#eacc407e205ffa4a37fbc36b0b99927a4ad68020')
   assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /eacc407e205ffa4a37fbc36b0b99927a4ad68020/)
+})
+
+test('seeds and enables the bundled Codex subagent provider', async (t) => {
+  const directory = temporaryDirectory(t)
+  const dshHome = join(directory, 'dsh-home')
+  const sourceDir = join(directory, 'app', 'node_modules', '@deepseek-ai', 'dsh-subagent-codex')
+  writeJson(join(sourceDir, 'package.json'), {
+    name: '@deepseek-ai/dsh-subagent-codex', version: '0.1.1-rc.2',
+    main: './lib/index.js', dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  mkdirSync(join(sourceDir, 'lib'), { recursive: true })
+  writeFileSync(join(sourceDir, 'lib', 'index.js'), 'export {}\n')
+  writeFileSync(join(sourceDir, 'cordis.patch.yml'), 'include: []\n')
+
+  await installBundledCodexSubagentPlugin({ dshHome, sourceDir })
+
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const plugin = readPluginCatalog({ dshHome }).plugins[0]
+  assert.equal(plugin.name, '@deepseek-ai/dsh-subagent-codex')
+  assert.equal(plugin.requested, '0.1.1-rc.2')
+  assert.equal(plugin.version, '0.1.1-rc.2')
+  assert.equal(plugin.enabled, true)
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /0\.1\.1-rc\.2/)
 })
 
 test('upgrades the npm file viewer bundle back to the online-updateable GitHub release', async (t) => {

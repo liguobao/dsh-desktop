@@ -26,6 +26,20 @@
       "stars": 0,
       "install": "dsh plugin --profile web add github:liguobao/dsh-file-viewer",
       "added": "2026-08-20"
+    },
+    {
+      "name": "dsh-subagent-codex",
+      "owner": "deepseek-ai",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/tree/main/packages/subagent/subagent-codex",
+      "category": "workflow",
+      "description": {
+        "en": "Official one-shot Codex subagent provider over the app-server protocol, released with DeepSeek Harness 0.1.1-rc.2.",
+        "zh": "DeepSeek Harness 0.1.1-rc.2 官方 Codex 一次性子代理 provider，通过 app-server 协议运行。"
+      },
+      "npm": "@deepseek-ai/dsh-subagent-codex@0.1.1-rc.2",
+      "stars": 0,
+      "install": "dsh plugin --profile web add @deepseek-ai/dsh-subagent-codex@0.1.1-rc.2",
+      "added": "2026-08-21"
     }
   ]
 }

@@ -18,9 +18,14 @@ const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
 const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
 /** Bundled plugins installed automatically on a fresh profile. GitHub specs update online. */
-export const DEFAULT_PLUGINS = ['github:liguobao/deepseek-harness-remote', 'github:liguobao/dsh-file-viewer']
+export const DEFAULT_PLUGINS = [
+  'github:liguobao/deepseek-harness-remote',
+  'github:liguobao/dsh-file-viewer',
+  '@deepseek-ai/dsh-subagent-codex@0.1.1-rc.2',
+]
 export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#c049c8eb669765f82f90266c9f9c3a0166a7d734'
 export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#eacc407e205ffa4a37fbc36b0b99927a4ad68020'
+export const BUNDLED_CODEX_SUBAGENT_SPEC = '@deepseek-ai/dsh-subagent-codex@0.1.1-rc.2'
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   'github:liguobao/deepseek-harness-remote#v0.3.23',
   'github:liguobao/deepseek-harness-remote#9df2052098ee264edc0d0b9245367a063458c81e',
@@ -312,6 +317,15 @@ export function installBundledFileViewerPlugin(options) {
     packageName: 'dsh-file-viewer',
     spec: options.spec ?? BUNDLED_FILE_VIEWER_SPEC,
     legacySpecs: LEGACY_BUNDLED_FILE_VIEWER_SPECS,
+  })
+}
+
+/** Seed the prebuilt Codex subagent provider and enable it in the web profile. */
+export function installBundledCodexSubagentPlugin(options) {
+  return installBundledPlugin({
+    ...options,
+    packageName: '@deepseek-ai/dsh-subagent-codex',
+    spec: options.spec ?? BUNDLED_CODEX_SUBAGENT_SPEC,
   })
 }
 

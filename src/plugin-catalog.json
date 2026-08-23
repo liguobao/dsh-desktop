@@ -87,7 +87,7 @@
       "zh": "娱乐"
     }
   },
-  "count": 1666,
+  "count": 1667,
   "plugins": [
     {
       "name": "dsh-status-rotator",
@@ -27311,6 +27311,22 @@
       "source": "github",
       "stars": 0,
       "added": "2026-08-20"
+    },
+    {
+      "name": "dsh-subagent-codex",
+      "owner": "deepseek-ai",
+      "repository": "deepseek-ai/deepseek-harness",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/tree/main/packages/subagent/subagent-codex",
+      "category": "workflow",
+      "description": {
+        "en": "Official one-shot Codex subagent provider over the app-server protocol, released with DeepSeek Harness 0.1.1-rc.2.",
+        "zh": "DeepSeek Harness 0.1.1-rc.2 官方 Codex 一次性子代理 provider，通过 app-server 协议运行。"
+      },
+      "npm": "@deepseek-ai/dsh-subagent-codex",
+      "spec": "@deepseek-ai/dsh-subagent-codex@0.1.1-rc.2",
+      "source": "npm",
+      "stars": 0,
+      "added": "2026-08-21"
     }
   ]
 }

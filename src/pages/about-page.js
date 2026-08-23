@@ -37,6 +37,7 @@
   document.querySelector('#dsh-version').textContent = version('dsh')
   document.querySelector('#remote-version').textContent = version('remote')
   document.querySelector('#file-viewer-version').textContent = version('fileViewer')
+  document.querySelector('#codex-subagent-version').textContent = version('codexSubagent')
   document.querySelector('#project-link').href = projectUrl
   document.querySelector('#project-url').textContent = projectUrl.replace(/^https:\/\//, '')
 })()

@@ -29,6 +29,15 @@ test('release builds bundle the prebuilt file viewer plugin and its runtime depe
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/cordis.patch.yml', import.meta.url)), true)
 })
 
+test('release builds bundle the prebuilt Codex subagent plugin', () => {
+  assert.equal(packageJson.dependencies['@deepseek-ai/dsh-subagent-codex'], '0.1.1-rc.2')
+  assert.equal(packageJson.dependencies['@openai/codex'], undefined)
+  assert.equal(existsSync(new URL('../node_modules/@deepseek-ai/dsh-subagent-codex/lib/index.js', import.meta.url)), true)
+  assert.equal(existsSync(new URL('../node_modules/@deepseek-ai/dsh-subagent-codex/cordis.patch.yml', import.meta.url)), true)
+  assert.equal(existsSync(new URL('../node_modules/@openai/codex/bin/codex.js', import.meta.url)), true)
+  assert.equal(existsSync(new URL(`../node_modules/@openai/codex-${process.platform}-${process.arch}/package.json`, import.meta.url)), true)
+})
+
 test('release builds publish only user-facing installers', () => {
   assert.equal(packageJson.build.publish, undefined)
   assert.deepEqual(packageJson.build.mac.target, ['dmg'])
