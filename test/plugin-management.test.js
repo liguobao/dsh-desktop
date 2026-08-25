@@ -76,9 +76,20 @@ test('seeds the bundled remote plugin with runtime dependencies and an updateabl
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'index.js'), 'utf8'), 'export {}\n')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'werift', 'package.json'))).version, '0.24.4')
-  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /ae70ff87afd0ac176f0f4105b23a417a97a1dd04/)
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /4cf5abf515a82603ce68374e7ac80a3e1f27b9eb/)
 
-  const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+  let profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+  profileManifest.dependencies['ds-harness-remote'] = 'github:liguobao/deepseek-harness-remote#ae70ff87afd0ac176f0f4105b23a417a97a1dd04'
+  writeFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'index.js'), 'stale\n')
+  writeJson(join(profileDir, 'package.json'), profileManifest)
+  await installBundledRemotePlugin({ dshHome, sourceDir })
+  profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+  assert.equal(
+    profileManifest.dependencies['ds-harness-remote'],
+    'github:liguobao/deepseek-harness-remote#4cf5abf515a82603ce68374e7ac80a3e1f27b9eb',
+  )
+  assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'index.js'), 'utf8'), 'export {}\n')
+
   profileManifest.dependencies['ds-harness-remote'] = 'github:liguobao/deepseek-harness-remote#newer-commit'
   writeJson(join(profileDir, 'package.json'), profileManifest)
   await installBundledRemotePlugin({ dshHome, sourceDir })
@@ -282,7 +293,7 @@ test('upgrades the previous bundled remote release without overwriting online up
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'fixed.js'), 'utf8'), 'fixed\n')
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
   assert.equal(plugin.name, 'ds-harness-remote')
-  assert.equal(plugin.requested, 'github:liguobao/deepseek-harness-remote#ae70ff87afd0ac176f0f4105b23a417a97a1dd04')
+  assert.equal(plugin.requested, 'github:liguobao/deepseek-harness-remote#4cf5abf515a82603ce68374e7ac80a3e1f27b9eb')
   assert.equal(plugin.version, '0.3.32')
   const nextManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   assert.equal(nextManifest.dependencies['dsh-remote'], undefined)

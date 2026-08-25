@@ -23,11 +23,12 @@ export const DEFAULT_PLUGINS = [
   'github:liguobao/dsh-file-viewer',
   '@deepseek-ai/dsh-subagent-codex@0.1.1-rc.2',
 ]
-export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#ae70ff87afd0ac176f0f4105b23a417a97a1dd04'
+export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#4cf5abf515a82603ce68374e7ac80a3e1f27b9eb'
 export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#7fbfc7b8092c6ca1935b19b7563761a5600df522'
 export const BUNDLED_CODEX_SUBAGENT_SPEC = '@deepseek-ai/dsh-subagent-codex@0.1.1-rc.2'
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   'github:liguobao/deepseek-harness-remote#v0.3.32',
+  'github:liguobao/deepseek-harness-remote#ae70ff87afd0ac176f0f4105b23a417a97a1dd04',
   'github:liguobao/deepseek-harness-remote#v0.3.31',
   'github:liguobao/deepseek-harness-remote#c0cb1a9e5376dd3974b212e1897dd62c532bd9b4',
   'github:liguobao/deepseek-harness-remote#0243b35ba19b506565650322e1d29236c45e7098',
