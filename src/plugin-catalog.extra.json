@@ -2,7 +2,7 @@
   "comment": "Local catalog entries merged on top of the online registry by scripts/generate-plugin-catalog.mjs. Keeps DSH Desktop's bundled snapshot self-contained without waiting for upstream listing merges. Entries follow the awesome-dsh-plugin registry schema (name/owner/url/category/description/install/added).",
   "plugins": [
     {
-      "name": "deepseek-harness-remote",
+      "name": "ds-harness-remote",
       "owner": "liguobao",
       "url": "https://github.com/liguobao/deepseek-harness-remote",
       "category": "tools",

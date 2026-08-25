@@ -16,10 +16,10 @@ test('release builds bundle pnpm for profile plugin management', () => {
 })
 
 test('release builds bundle the prebuilt remote plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['dsh-remote'], 'github:liguobao/deepseek-harness-remote#v0.3.31')
-  assert.equal(existsSync(new URL('../node_modules/dsh-remote/packages/plugin/dist/index.js', import.meta.url)), true)
-  const client = readFileSync(new URL('../node_modules/dsh-remote/packages/plugin/dist/client.github.js', import.meta.url), 'utf8')
-  assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"dsh-remote"/)
+  assert.equal(packageJson.dependencies['ds-harness-remote'], 'github:liguobao/deepseek-harness-remote#v0.3.32')
+  assert.equal(existsSync(new URL('../node_modules/ds-harness-remote/packages/plugin/dist/index.js', import.meta.url)), true)
+  const client = readFileSync(new URL('../node_modules/ds-harness-remote/packages/plugin/dist/client.github.js', import.meta.url), 'utf8')
+  assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"ds-harness-remote"/)
 })
 
 test('release builds bundle the prebuilt file viewer plugin and its runtime dependency tree', () => {

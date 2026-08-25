@@ -23,11 +23,13 @@ export const DEFAULT_PLUGINS = [
   'github:liguobao/dsh-file-viewer',
   '@deepseek-ai/dsh-subagent-codex@0.1.1-rc.2',
 ]
-export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#c0cb1a9e5376dd3974b212e1897dd62c532bd9b4'
+export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#ae70ff87afd0ac176f0f4105b23a417a97a1dd04'
 export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#7fbfc7b8092c6ca1935b19b7563761a5600df522'
 export const BUNDLED_CODEX_SUBAGENT_SPEC = '@deepseek-ai/dsh-subagent-codex@0.1.1-rc.2'
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
+  'github:liguobao/deepseek-harness-remote#v0.3.32',
   'github:liguobao/deepseek-harness-remote#v0.3.31',
+  'github:liguobao/deepseek-harness-remote#c0cb1a9e5376dd3974b212e1897dd62c532bd9b4',
   'github:liguobao/deepseek-harness-remote#0243b35ba19b506565650322e1d29236c45e7098',
   'github:liguobao/deepseek-harness-remote#v0.3.30',
   'github:liguobao/deepseek-harness-remote#1acd5f49563fe7dfbad221e0293ea7be2ea05a19',
@@ -242,15 +244,16 @@ export async function installBundledPlugin({
   spec,
   packageName,
   legacySpecs = new Set(),
+  legacyPackageNames = [],
 }) {
   const profileDir = ensureProfileInitialized(dshHome, profile)
   const manifestPath = join(profileDir, 'package.json')
   const profileManifest = readJson(manifestPath)
   const sourceManifest = readJson(join(sourceDir, 'package.json'))
+  const normalized = normalizePluginSpec(spec)
   if (sourceManifest.name !== packageName || sourceManifest.dsh?.bundle?.patch === undefined) {
     throw new Error(`Bundled plugin ${packageName} is invalid`)
   }
-  const normalized = normalizePluginSpec(spec)
   let dependencySpecifier
   let lockVersion
   if (normalized.source === 'github') {
@@ -263,6 +266,21 @@ export async function installBundledPlugin({
     }
     dependencySpecifier = sourceManifest.version
     lockVersion = sourceManifest.version
+  }
+
+  const legacyPackageSet = new Set(legacyPackageNames.filter(name =>
+    name !== packageName && typeof name === 'string' && PACKAGE_NAME_PATTERN.test(name),
+  ))
+  for (const legacyPackageName of legacyPackageSet) {
+    const declaredSpec = profileManifest.dependencies?.[legacyPackageName]
+    if (typeof declaredSpec !== 'string' || !legacySpecs.has(declaredSpec)) continue
+    delete profileManifest.dependencies[legacyPackageName]
+    const bundles = Array.isArray(profileManifest.dsh?.profile?.bundles) ? profileManifest.dsh.profile.bundles : []
+    profileManifest.dsh = {
+      ...profileManifest.dsh,
+      profile: { ...profileManifest.dsh?.profile, bundles: bundles.filter(name => name !== legacyPackageName) },
+    }
+    await rm(join(profileDir, 'node_modules', ...legacyPackageName.split('/')), { recursive: true, force: true })
   }
 
   const targetPlugin = join(profileDir, 'node_modules', ...packageName.split('/'))
@@ -298,6 +316,7 @@ export async function installBundledPlugin({
   lockfile.importers ??= {}
   lockfile.importers['.'] ??= {}
   lockfile.importers['.'].dependencies ??= {}
+  for (const legacyPackageName of legacyPackageSet) delete lockfile.importers['.'].dependencies[legacyPackageName]
   lockfile.importers['.'].dependencies[packageName] = {
     specifier: dependencySpecifier,
     version: lockVersion,
@@ -310,9 +329,10 @@ export async function installBundledPlugin({
 export function installBundledRemotePlugin(options) {
   return installBundledPlugin({
     ...options,
-    packageName: 'dsh-remote',
+    packageName: 'ds-harness-remote',
     spec: options.spec ?? BUNDLED_REMOTE_SPEC,
     legacySpecs: LEGACY_BUNDLED_REMOTE_SPECS,
+    legacyPackageNames: ['dsh-remote', 'deepseek-harness-remote'],
   })
 }
 

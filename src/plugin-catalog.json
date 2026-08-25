@@ -27283,7 +27283,7 @@
       "added": "2026-08-15"
     },
     {
-      "name": "deepseek-harness-remote",
+      "name": "ds-harness-remote",
       "owner": "liguobao",
       "repository": "liguobao/deepseek-harness-remote",
       "url": "https://github.com/liguobao/deepseek-harness-remote",

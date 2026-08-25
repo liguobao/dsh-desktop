@@ -404,7 +404,7 @@ function aboutVersions() {
   return {
     desktop: app.getVersion(),
     dsh: bundledPackageVersion('@deepseek-ai/dsh'),
-    remote: aboutPluginVersion('dsh-remote'),
+    remote: aboutPluginVersion('ds-harness-remote'),
     fileViewer: aboutPluginVersion('dsh-file-viewer'),
     codexSubagent: aboutPluginVersion('@deepseek-ai/dsh-subagent-codex'),
   }
@@ -915,7 +915,7 @@ if (!hasLock) {
     await updateLoading(copy.preparingPlugins, 8, 'preparing-bundled-plugins', restartGeneration)
     try {
       const bundledRemote = await installBundledRemotePlugin({
-        sourceDir: dirname(require.resolve('dsh-remote/package.json')),
+        sourceDir: dirname(require.resolve('ds-harness-remote/package.json')),
         dshHome,
       })
       if (bundledRemote !== undefined) writeLog('desktop', `Bundled remote plugin available at ${bundledRemote}.\n`)

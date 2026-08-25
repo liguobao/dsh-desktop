@@ -46,8 +46,8 @@
     "@deepseek-ai/dsh-timeout": "0.1.1-rc.2",
     "@deepseek-ai/dsh-workflow": "0.1.1-rc.2",
     "@deepseek-ai/dsh-subagent-codex": "0.1.1-rc.2",
+    "ds-harness-remote": "github:liguobao/deepseek-harness-remote#v0.3.32",
     "dsh-file-viewer": "github:liguobao/dsh-file-viewer#v0.2.4",
-    "dsh-remote": "github:liguobao/deepseek-harness-remote#v0.3.31",
     "pnpm": "11.21.0",
     "semver": "7.7.3",
     "yaml": "2.9.0"
