@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop",
-  "version": "0.1.39",
+  "version": "0.1.40",
   "description": "Community desktop wrapper for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "src/main.js",
@@ -46,8 +46,8 @@
     "@deepseek-ai/dsh-timeout": "0.1.1-rc.2",
     "@deepseek-ai/dsh-workflow": "0.1.1-rc.2",
     "@deepseek-ai/dsh-subagent-codex": "0.1.1-rc.2",
-    "dsh-file-viewer": "github:liguobao/dsh-file-viewer#v0.2.3",
-    "dsh-remote": "github:liguobao/deepseek-harness-remote#v0.3.30",
+    "dsh-file-viewer": "github:liguobao/dsh-file-viewer#v0.2.4",
+    "dsh-remote": "github:liguobao/deepseek-harness-remote#v0.3.31",
     "pnpm": "11.21.0",
     "semver": "7.7.3",
     "yaml": "2.9.0"
