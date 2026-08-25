@@ -61,7 +61,7 @@ test('manager pages disallow inline scripts and styles', () => {
   assert.doesNotMatch(page, /unsafe-inline/)
 })
 
-test('about page shows bundled component versions and the project GitHub address', () => {
+test('about page shows bundled DSH and installed plugin versions', () => {
   const page = source('../src/pages/about.html')
   const script = source('../src/pages/about-page.js')
   const main = source('../src/main.js')
@@ -78,8 +78,9 @@ test('about page shows bundled component versions and the project GitHub address
   assert.match(script, /version\('dsh'\)/)
   assert.match(main, /desktop: app\.getVersion\(\)/)
   assert.match(main, /bundledPackageVersion\('@deepseek-ai\/dsh'\)/)
-  assert.match(main, /bundledPackageVersion\('dsh-remote'\)/)
-  assert.match(main, /bundledPackageVersion\('dsh-file-viewer'\)/)
-  assert.match(main, /bundledPackageVersion\('@deepseek-ai\/dsh-subagent-codex'\)/)
+  assert.match(main, /readPluginCatalog\(\{ dshHome \}\)/)
+  assert.match(main, /remote: aboutPluginVersion\('dsh-remote'\)/)
+  assert.match(main, /fileViewer: aboutPluginVersion\('dsh-file-viewer'\)/)
+  assert.match(main, /codexSubagent: aboutPluginVersion\('@deepseek-ai\/dsh-subagent-codex'\)/)
   assert.match(main, /label: copy\.about, click: showAbout/)
 })

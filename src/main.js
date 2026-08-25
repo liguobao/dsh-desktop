@@ -382,13 +382,31 @@ function bundledPackageVersion(packageName) {
   return manifest.version
 }
 
+function installedPluginVersion(packageName) {
+  if (dshHome === undefined) return undefined
+  try {
+    const plugin = readPluginCatalog({ dshHome }).plugins.find(candidate => candidate.name === packageName)
+    return plugin?.installed === true && typeof plugin.version === 'string' && plugin.version.trim() !== ''
+      ? plugin.version
+      : undefined
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    writeLog('stderr', `Unable to read installed ${packageName} version: ${detail}\n`)
+    return undefined
+  }
+}
+
+function aboutPluginVersion(packageName) {
+  return installedPluginVersion(packageName) ?? bundledPackageVersion(packageName)
+}
+
 function aboutVersions() {
   return {
     desktop: app.getVersion(),
     dsh: bundledPackageVersion('@deepseek-ai/dsh'),
-    remote: bundledPackageVersion('dsh-remote'),
-    fileViewer: bundledPackageVersion('dsh-file-viewer'),
-    codexSubagent: bundledPackageVersion('@deepseek-ai/dsh-subagent-codex'),
+    remote: aboutPluginVersion('dsh-remote'),
+    fileViewer: aboutPluginVersion('dsh-file-viewer'),
+    codexSubagent: aboutPluginVersion('@deepseek-ai/dsh-subagent-codex'),
   }
 }
 
