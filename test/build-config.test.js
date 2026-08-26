@@ -3,6 +3,9 @@ import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+const buildWorkflow = readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8')
+const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+const readmeZh = readFileSync(new URL('../README.zh-CN.md', import.meta.url), 'utf8')
 
 test('Windows build produces installer and portable packages', () => {
   assert.deepEqual(packageJson.build.win.target, ['nsis', 'portable'])
@@ -16,10 +19,25 @@ test('release builds bundle pnpm for profile plugin management', () => {
 })
 
 test('release builds bundle the prebuilt remote plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['ds-harness-remote'], 'github:liguobao/deepseek-harness-remote#v0.3.32')
+  assert.equal(packageJson.dependencies['ds-harness-remote'], 'github:liguobao/deepseek-harness-remote#v0.3.33')
   assert.equal(existsSync(new URL('../node_modules/ds-harness-remote/packages/plugin/dist/index.js', import.meta.url)), true)
   const client = readFileSync(new URL('../node_modules/ds-harness-remote/packages/plugin/dist/client.github.js', import.meta.url), 'utf8')
   assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"ds-harness-remote"/)
+})
+
+test('release notes and download docs include the mirror and remote Android APK', () => {
+  const mirror = 'https://pan.quark.cn/s/a837649635e2#/list/share/b4cc08109f3d47f78bc816ef2dbecd4f'
+  assert.match(buildWorkflow, /Download bundled DSH Remote Android APK/)
+  assert.match(buildWorkflow, /dsh-remote-android-\$\{remote_tag\}\.apk/)
+  assert.match(buildWorkflow, /Desktop installers and the bundled DSH Remote Android client/)
+  assert.match(buildWorkflow, /桌面安装包和内置版本匹配的 DSH Remote Android 客户端已附在本 Release/)
+  assert.equal(buildWorkflow.includes(mirror), true)
+  assert.match(readme, /DSH Remote Android client/)
+  assert.match(readme, /dsh-remote-android-vA\.B\.C\.apk/)
+  assert.equal(readme.includes(mirror), true)
+  assert.match(readmeZh, /DSH Remote Android 客户端/)
+  assert.match(readmeZh, /dsh-remote-android-vA\.B\.C\.apk/)
+  assert.equal(readmeZh.includes(mirror), true)
 })
 
 test('release builds bundle the prebuilt file viewer plugin and its runtime dependency tree', () => {

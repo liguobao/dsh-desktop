@@ -23,10 +23,11 @@ export const DEFAULT_PLUGINS = [
   'github:liguobao/dsh-file-viewer',
   '@deepseek-ai/dsh-subagent-codex@0.1.1-rc.2',
 ]
-export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#4cf5abf515a82603ce68374e7ac80a3e1f27b9eb'
+export const BUNDLED_REMOTE_SPEC = 'github:liguobao/deepseek-harness-remote#3e96c7e9c36b05c39651669eb9d20fe6fb77ad4e'
 export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#7fbfc7b8092c6ca1935b19b7563761a5600df522'
 export const BUNDLED_CODEX_SUBAGENT_SPEC = '@deepseek-ai/dsh-subagent-codex@0.1.1-rc.2'
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
+  'github:liguobao/deepseek-harness-remote#4cf5abf515a82603ce68374e7ac80a3e1f27b9eb',
   'github:liguobao/deepseek-harness-remote#v0.3.32',
   'github:liguobao/deepseek-harness-remote#ae70ff87afd0ac176f0f4105b23a417a97a1dd04',
   'github:liguobao/deepseek-harness-remote#v0.3.31',
@@ -135,6 +136,10 @@ function defaultPluginKey(normalized) {
   return normalized.source === 'github'
     ? `github:${normalized.repository.toLowerCase()}${normalized.path === undefined ? '' : `#path:${normalized.path}`}`
     : `npm:${normalized.packageName}`
+}
+
+function shortCommitRef(ref) {
+  return typeof ref === 'string' && /^[a-f0-9]{7,39}$/i.test(ref)
 }
 
 function packageManifestPath(profileDir, packageName) {
@@ -699,6 +704,14 @@ function pluginUsesGitHubSource(plugin, normalized) {
   }
 }
 
+function writeProfileDependencySpecifier(profileDir, packageName, spec) {
+  const manifestPath = join(profileDir, 'package.json')
+  const manifest = readJson(manifestPath)
+  if (manifest.dependencies?.[packageName] === spec) return
+  manifest.dependencies = { ...manifest.dependencies, [packageName]: spec }
+  writeJsonAtomic(manifestPath, manifest)
+}
+
 function githubBuildKey(packageName, normalized) {
   return `${packageName}@git+https://github.com/${normalized.repository}.git`
 }
@@ -757,6 +770,9 @@ export async function installPlugin({
 }) {
   if (typeof allowBuildScripts !== 'boolean') throw new Error('Invalid build-script permission')
   let normalized = normalizePluginSpec(spec)
+  if (normalized.source === 'github' && shortCommitRef(normalized.ref)) {
+    throw new Error('Short Git commit hashes are not supported; use the full 40-character SHA')
+  }
   const profileDir = profileDirectory(dshHome, profile)
   if (normalized.source === 'github' && normalized.ref === undefined) {
     normalized = await resolveLatestGitHubRevision({ normalized, cwd: profileDir, env, onOutput, signal, runGitImpl })
@@ -876,10 +892,12 @@ export async function updatePlugin({
   if (normalized.ref?.toLowerCase() === commit) return { ...before, upToDate: true }
 
   const wasEnabled = plugin.enabled
+  const targetSpec = normalizedGitHubSpec({ ...normalized, ref: commit })
+  writeProfileDependencySpecifier(before.profileDir, plugin.name, targetSpec)
   const result = await installPlugin({
     dshHome,
     pnpmEntry,
-    spec: normalizedGitHubSpec({ ...normalized, ref: commit }),
+    spec: targetSpec,
     allowBuildScripts: githubBuildAllowed(before.profileDir, plugin, normalized),
     execPath,
     env,

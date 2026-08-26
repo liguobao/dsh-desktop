@@ -31,8 +31,9 @@ For downloads in mainland China, use [Quark Cloud Drive / 夸克网盘](https://
 | macOS Apple Silicon | `DSH-Desktop-vX.Y.Z-macos-arm64.dmg` |
 | macOS Intel | `DSH-Desktop-vX.Y.Z-macos-x64.dmg` |
 | Linux x64 | `DSH-Desktop-vX.Y.Z-linux-x64.AppImage` |
+| DSH Remote Android client | `dsh-remote-android-vA.B.C.apk` |
 
-macOS packages are Developer ID signed and notarized. Windows may still show a SmartScreen warning. Only install packages downloaded from this repository's Release page or the mirror above.
+The Android client APK version follows the bundled Remote component. macOS packages are Developer ID signed and notarized. Windows may still show a SmartScreen warning. Only install packages downloaded from this repository's Release page or the mirror above.
 
 To run the AppImage:
 

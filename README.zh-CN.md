@@ -31,8 +31,9 @@
 | macOS Apple Silicon | `DSH-Desktop-vX.Y.Z-macos-arm64.dmg` |
 | macOS Intel | `DSH-Desktop-vX.Y.Z-macos-x64.dmg` |
 | Linux x64 | `DSH-Desktop-vX.Y.Z-linux-x64.AppImage` |
+| DSH Remote Android 客户端 | `dsh-remote-android-vA.B.C.apk` |
 
-macOS 安装包已使用 Developer ID 签名并完成 Apple 公证。Windows 仍可能显示 SmartScreen 提示，请仅安装来自本仓库 Release 页面或上述镜像的文件。
+Android 客户端 APK 版本号跟随内置 Remote 组件。macOS 安装包已使用 Developer ID 签名并完成 Apple 公证。Windows 仍可能显示 SmartScreen 提示，请仅安装来自本仓库 Release 页面或上述镜像的文件。
 
 运行 AppImage：
 

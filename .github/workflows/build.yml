@@ -115,6 +115,9 @@ jobs:
       contents: write
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
       - name: Download packages
         uses: actions/download-artifact@v8
         with:
@@ -122,12 +125,30 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Download bundled DSH Remote Android APK
+        run: |
+          remote_spec="$(node -p "require('./package.json').dependencies['ds-harness-remote']")"
+          remote_tag="${remote_spec##*#}"
+          if [ "$remote_tag" = "$remote_spec" ] || ! echo "$remote_tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Expected ds-harness-remote dependency to pin a release tag, got: $remote_spec" >&2
+            exit 1
+          fi
+          apk_name="dsh-remote-android-${remote_tag}.apk"
+          curl --fail --location --retry 3 --output "release-assets/$apk_name" \
+            "https://github.com/liguobao/deepseek-harness-remote/releases/download/$remote_tag/$apk_name"
+
       - name: Ensure GitHub Release exists
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
           DOWNLOAD_NOTES: |
+            ## Downloads / 下载
+
+            Desktop installers and the bundled DSH Remote Android client are attached to this Release.
+
+            桌面安装包和内置版本匹配的 DSH Remote Android 客户端已附在本 Release。
+
             ## Download mirror / 国内下载
 
             If GitHub downloads are slow or unavailable, use [Quark Cloud Drive / 夸克网盘](https://pan.quark.cn/s/a837649635e2#/list/share/b4cc08109f3d47f78bc816ef2dbecd4f) for downloads in mainland China.
