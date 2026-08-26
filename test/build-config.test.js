@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+const packageLock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'))
 const buildWorkflow = readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8')
 const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
 const readmeZh = readFileSync(new URL('../README.zh-CN.md', import.meta.url), 'utf8')
@@ -47,13 +48,12 @@ test('release builds bundle the prebuilt file viewer plugin and its runtime depe
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/cordis.patch.yml', import.meta.url)), true)
 })
 
-test('release builds bundle the prebuilt Codex subagent plugin', () => {
-  assert.equal(packageJson.dependencies['@deepseek-ai/dsh-subagent-codex'], '0.1.1-rc.2')
+test('release builds do not bundle the Codex subagent', () => {
+  assert.equal(packageJson.dependencies['@deepseek-ai/dsh-subagent-codex'], undefined)
   assert.equal(packageJson.dependencies['@openai/codex'], undefined)
-  assert.equal(existsSync(new URL('../node_modules/@deepseek-ai/dsh-subagent-codex/lib/index.js', import.meta.url)), true)
-  assert.equal(existsSync(new URL('../node_modules/@deepseek-ai/dsh-subagent-codex/cordis.patch.yml', import.meta.url)), true)
-  assert.equal(existsSync(new URL('../node_modules/@openai/codex/bin/codex.js', import.meta.url)), true)
-  assert.equal(existsSync(new URL(`../node_modules/@openai/codex-${process.platform}-${process.arch}/package.json`, import.meta.url)), true)
+  assert.equal(packageLock.packages['node_modules/@deepseek-ai/dsh-subagent-codex'], undefined)
+  assert.equal(packageLock.packages['node_modules/@openai/codex'], undefined)
+  assert.equal(packageLock.packages[`node_modules/@openai/codex-${process.platform}-${process.arch}`], undefined)
 })
 
 test('release builds publish only user-facing installers', () => {

@@ -38,15 +38,15 @@ test('bundled plugins are prepared locally after the splash appears and before H
   const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8')
   const readyHandler = source.slice(source.indexOf('app.whenReady().then'))
   const splash = readyHandler.indexOf('await showLoading(copy.preparing')
-  const bundled = readyHandler.indexOf('await installBundledRemotePlugin')
-  const codexSubagent = readyHandler.indexOf('await installBundledCodexSubagentPlugin')
+  const remote = readyHandler.indexOf('await installBundledRemotePlugin')
+  const fileViewer = readyHandler.indexOf('await installBundledFileViewerPlugin')
   const start = readyHandler.indexOf('startHarness().then')
 
   assert.ok(splash >= 0)
-  assert.ok(bundled > splash)
-  assert.ok(codexSubagent > bundled)
-  assert.ok(start > codexSubagent)
-  assert.ok(start > bundled)
+  assert.ok(remote > splash)
+  assert.ok(fileViewer > remote)
+  assert.ok(start > fileViewer)
+  assert.doesNotMatch(readyHandler, /installBundledCodexSubagentPlugin/)
 })
 
 test('DSH always launches from the app bundle without an independent updater', () => {

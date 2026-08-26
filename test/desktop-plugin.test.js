@@ -23,13 +23,13 @@ test('desktop adapter is a standalone dual-face DSH client package', () => {
   ])
 })
 
-test('desktop overlay adds the adapter and enables the bundled Codex subagent tool', () => {
+test('desktop overlay adds only the adapter', () => {
   const overlay = readFileSync(overlayUrl, 'utf8')
   assert.match(overlay, /id: dsh-desktop-integration/)
   assert.match(overlay, /name: '@dsh-desktop\/integration'/)
-  assert.match(overlay, /id: tool-subagent-codex-enabled/)
-  assert.match(overlay, /provider: codex/)
-  assert.match(overlay, /toolName: subagent_codex/)
+  assert.doesNotMatch(overlay, /tool-subagent-codex-enabled/)
+  assert.doesNotMatch(overlay, /provider: codex/)
+  assert.doesNotMatch(overlay, /toolName: subagent_codex/)
   assert.doesNotMatch(overlay, /disabled:\s+true/)
   assert.doesNotMatch(overlay, /id:\s+(?:api-gateway|ui-conversation|ui-workspace)\b/)
 })

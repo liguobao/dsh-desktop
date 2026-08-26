@@ -9,10 +9,9 @@
 ## 主要功能
 
 - 安装包开箱即用，无需另外安装 Node.js、npm 或执行 `npx`。
-- 内置版本匹配的 DeepSeek Harness、Remote、File Viewer 和 Codex Subagent 组件。
+- 内置版本匹配的 DeepSeek Harness、Remote 和 File Viewer 组件。
 - 只读预览源码、文本、Markdown、图片、PDF、CSV、JSON 和 YAML。
 - 从另一台已授权的电脑、手机、平板或浏览器继续远程会话。
-- 通过内置 `subagent_codex` 工具将独立任务委派给 Codex。
 - 从 npm 或 GitHub 搜索和安装插件。
 - 使用 VS Code、Cursor、VSCodium、Zed 或系统文件管理器打开工作区。
 - Harness 服务仅监听本机，Electron 渲染进程受限，外部链接交给系统浏览器。

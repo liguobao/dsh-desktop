@@ -24,7 +24,6 @@ import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
 import { loadPluginCatalog, normalizePluginSourceUrl } from './plugin-catalog.js'
 import {
   ensureDefaultPlugins,
-  installBundledCodexSubagentPlugin,
   installBundledFileViewerPlugin,
   installBundledRemotePlugin,
   installPlugin as installProfilePlugin,
@@ -406,7 +405,6 @@ function aboutVersions() {
     dsh: bundledPackageVersion('@deepseek-ai/dsh'),
     remote: aboutPluginVersion('ds-harness-remote'),
     fileViewer: aboutPluginVersion('dsh-file-viewer'),
-    codexSubagent: aboutPluginVersion('@deepseek-ai/dsh-subagent-codex'),
   }
 }
 
@@ -932,18 +930,6 @@ if (!hasLock) {
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
       writeLog('stderr', `Bundled file viewer plugin preparation failed: ${detail}\n`)
-    }
-    try {
-      const bundledCodexSubagent = await installBundledCodexSubagentPlugin({
-        sourceDir: dirname(require.resolve('@deepseek-ai/dsh-subagent-codex/package.json')),
-        dshHome,
-      })
-      if (bundledCodexSubagent !== undefined) {
-        writeLog('desktop', `Bundled Codex subagent plugin available at ${bundledCodexSubagent}.\n`)
-      }
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error)
-      writeLog('stderr', `Bundled Codex subagent plugin preparation failed: ${detail}\n`)
     }
     initializeAutoUpdates()
     buildMenu()

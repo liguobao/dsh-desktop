@@ -1,15 +1,5 @@
 # Desktop-only overlay. The adapter is installed into DSH's documented
-# out-of-tree plugin fallback before the child process starts. The Codex
-# provider is installed as a Profile Bundle; this row grants its tool to
-# Desktop sessions by default.
+# out-of-tree plugin fallback before the child process starts.
 - insert:
     - id: dsh-desktop-integration
       name: '@dsh-desktop/integration'
-
-    - id: tool-subagent-codex-enabled
-      name: '@deepseek-ai/dsh-tool-subagent'
-      config:
-        provider: codex
-        toolName: subagent_codex
-        backgroundMode: one-shot
-        maxDepth: provider-managed
