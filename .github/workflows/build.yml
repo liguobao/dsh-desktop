@@ -128,9 +128,12 @@ jobs:
       - name: Download bundled DSH Remote Android APK
         run: |
           remote_spec="$(node -p "require('./package.json').dependencies['ds-harness-remote']")"
-          remote_tag="${remote_spec##*#}"
-          if [ "$remote_tag" = "$remote_spec" ] || ! echo "$remote_tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "Expected ds-harness-remote dependency to pin a release tag, got: $remote_spec" >&2
+          if echo "$remote_spec" | grep -Eq '^github:liguobao/deepseek-harness-remote#v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            remote_tag="${remote_spec##*#}"
+          elif echo "$remote_spec" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            remote_tag="v${remote_spec}"
+          else
+            echo "Expected ds-harness-remote dependency to pin a release tag or exact registry version, got: $remote_spec" >&2
             exit 1
           fi
           apk_name="dsh-remote-android-${remote_tag}.apk"

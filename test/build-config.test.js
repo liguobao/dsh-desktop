@@ -30,6 +30,8 @@ test('release notes and download docs include the mirror and remote Android APK'
   const mirror = 'https://pan.quark.cn/s/a837649635e2#/list/share/b4cc08109f3d47f78bc816ef2dbecd4f'
   assert.match(buildWorkflow, /Download bundled DSH Remote Android APK/)
   assert.match(buildWorkflow, /dsh-remote-android-\$\{remote_tag\}\.apk/)
+  assert.match(buildWorkflow, /remote_tag="v\$\{remote_spec\}"/)
+  assert.match(buildWorkflow, /exact registry version/)
   assert.match(buildWorkflow, /Desktop installers and the bundled DSH Remote Android client/)
   assert.match(buildWorkflow, /桌面安装包和内置版本匹配的 DSH Remote Android 客户端已附在本 Release/)
   assert.equal(buildWorkflow.includes(mirror), true)
