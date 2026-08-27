@@ -20,7 +20,7 @@ test('release builds bundle pnpm for profile plugin management', () => {
 })
 
 test('release builds bundle the prebuilt remote plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['ds-harness-remote'], 'github:liguobao/deepseek-harness-remote#v0.3.33')
+  assert.equal(packageJson.dependencies['ds-harness-remote'], 'github:liguobao/deepseek-harness-remote#v0.3.34')
   assert.equal(existsSync(new URL('../node_modules/ds-harness-remote/packages/plugin/dist/index.js', import.meta.url)), true)
   const client = readFileSync(new URL('../node_modules/ds-harness-remote/packages/plugin/dist/client.github.js', import.meta.url), 'utf8')
   assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"ds-harness-remote"/)
@@ -42,7 +42,7 @@ test('release notes and download docs include the mirror and remote Android APK'
 })
 
 test('release builds bundle the prebuilt file viewer plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['dsh-file-viewer'], 'github:liguobao/dsh-file-viewer#v0.2.4')
+  assert.equal(packageJson.dependencies['dsh-file-viewer'], 'github:liguobao/dsh-file-viewer#v0.2.5')
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/index.js', import.meta.url)), true)
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/client.js', import.meta.url)), true)
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/cordis.patch.yml', import.meta.url)), true)
