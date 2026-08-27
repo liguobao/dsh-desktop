@@ -33,6 +33,8 @@ test('plugin manager uses a single page and bridge without tabs or Skills', () =
   assert.match(pluginScript, /const CATALOG_PAGE_SIZE = 5/)
   assert.match(pluginScript, /pagePlugins = matches\.slice/)
   assert.match(pluginScript, /addedTime\(right\) - addedTime\(left\)/)
+  assert.match(pluginScript, /if \(!system && plugin\.installed\)/)
+  assert.doesNotMatch(pluginScript, /plugin\.source === 'github' && plugin\.installed/)
   assert.doesNotMatch(pluginPreload, /dsh-desktop:skills-/)
 })
 

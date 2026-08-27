@@ -18,7 +18,7 @@ export const SYSTEM_BUNDLES = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/ds
 const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
 const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
-export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.3.34'
+export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.3.35'
 export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.2.5'
 /** Optional online defaults. Desktop-bundled plugins are prepared locally before Harness starts. */
 export const DEFAULT_PLUGINS = []
@@ -690,6 +690,26 @@ async function resolveGitHubDefaultCommit({ normalized, cwd, env, onOutput, sign
   throw new Error('Could not resolve the GitHub repository default branch')
 }
 
+function latestNpmVersionFromOutput(output) {
+  for (const line of output.split(/\r?\n/).map(line => line.trim()).reverse()) {
+    if (semver.valid(line) !== null) return line
+  }
+  throw new Error('Could not resolve the npm package latest version')
+}
+
+async function resolveLatestNpmVersion({ packageName, env, execPath, onOutput, pnpmEntry, profileDir, signal, runPnpmImpl }) {
+  const result = await runPnpmImpl({
+    args: ['view', packageName, 'version'],
+    env,
+    execPath,
+    onOutput,
+    pnpmEntry,
+    profileDir,
+    signal,
+  })
+  return latestNpmVersionFromOutput(result.output)
+}
+
 function findInstalledPlugin(catalog, previous, normalized) {
   if (normalized.source === 'npm') {
     return catalog.plugins.find(candidate => candidate.name === normalized.packageName)
@@ -886,8 +906,46 @@ export async function updatePlugin({
   const before = readPluginCatalog({ dshHome, profile })
   const plugin = before.plugins.find(candidate => candidate.name === name)
   if (plugin === undefined) throw new Error('Plugin is not installed')
+  if (plugin.source !== 'github') {
+    const latestVersion = await resolveLatestNpmVersion({
+      packageName: plugin.name,
+      env,
+      execPath,
+      onOutput,
+      pnpmEntry,
+      profileDir: before.profileDir,
+      signal,
+      runPnpmImpl,
+    })
+    if (plugin.version === latestVersion) return { ...before, upToDate: true }
+
+    const wasEnabled = plugin.enabled
+    const result = await installPlugin({
+      dshHome,
+      pnpmEntry,
+      spec: `${plugin.name}@${latestVersion}`,
+      execPath,
+      env,
+      onOutput,
+      signal,
+      profile,
+      runGitImpl,
+      runPnpmImpl,
+    })
+    let catalog = readPluginCatalog({ dshHome, profile })
+    const updated = catalog.plugins.find(candidate => candidate.name === plugin.name)
+    if (!wasEnabled && updated?.bundle && updated.enabled) {
+      setPluginEnabled({ dshHome, name: updated.name, enabled: false, profile })
+      catalog = readPluginCatalog({ dshHome, profile })
+    }
+    return {
+      ...catalog,
+      buildScriptsIgnored: result.buildScriptsIgnored,
+      upToDate: false,
+    }
+  }
+
   const normalized = normalizePluginSpec(plugin.requested)
-  if (normalized.source !== 'github') throw new Error('Only GitHub plugins support online updates')
   const commit = await resolveGitHubDefaultCommit({
     normalized,
     cwd: before.profileDir,

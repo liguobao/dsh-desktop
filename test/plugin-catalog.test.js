@@ -158,6 +158,43 @@ test('does not duplicate local extra entries already listed in the online catalo
   assert.ok(online.catalog.plugins.some((plugin) => plugin.repository === 'example/new-tool'))
 })
 
+test('local npm entries override catalog GitHub entries for the same repository', async (t) => {
+  const bundledPath = temporaryCatalog(t, {
+    ...fixture,
+    plugins: [
+      ...fixture.plugins,
+      {
+        name: 'remote',
+        owner: 'example',
+        url: 'https://github.com/example/remote',
+        category: 'tools',
+        description: 'Install from GitHub',
+        install: 'dsh plugin --profile web add github:example/remote',
+      },
+    ],
+  })
+  const extraPath = temporaryExtra(t, [
+    {
+      name: 'remote',
+      owner: 'example',
+      url: 'https://github.com/example/remote',
+      category: 'tools',
+      description: 'Install from npm',
+      npm: 'dsh-remote',
+    },
+  ])
+
+  const offline = await loadPluginCatalog({
+    bundledPath,
+    extraPath,
+    fetchImpl: async () => { throw new Error('offline') },
+  })
+  const matches = offline.catalog.plugins.filter(plugin => plugin.repository === 'example/remote')
+  assert.equal(matches.length, 1)
+  assert.equal(matches[0].source, 'npm')
+  assert.equal(matches[0].spec, 'dsh-remote')
+})
+
 test('bundled catalog is populated and source links stay on GitHub', () => {
   const catalog = readBundledPluginCatalog()
   assert.ok(catalog.count >= 400)

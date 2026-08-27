@@ -162,9 +162,30 @@ export function readExtraPluginEntries(path = EXTRA_CATALOG_PATH) {
   return plugins
 }
 
-function withLocalEntries(registry, extras) {
+function catalogRepositoryKey(entry) {
+  try {
+    const url = new URL(normalizePluginSourceUrl(entry?.url))
+    const segments = url.pathname.split('/').filter(Boolean)
+    const normalized = installSpec(entry)
+    return `${segments[0].toLowerCase()}/${segments[1].toLowerCase()}#${normalized.path ?? ''}`
+  } catch {
+    return undefined
+  }
+}
+
+export function withLocalEntries(registry, extras) {
   const plugins = Array.isArray(registry?.plugins) ? registry.plugins : []
-  return { ...registry, plugins: [...plugins, ...extras] }
+  const localKeys = new Set(extras.map(catalogRepositoryKey).filter(key => key !== undefined))
+  return {
+    ...registry,
+    plugins: [
+      ...plugins.filter(entry => {
+        const key = catalogRepositoryKey(entry)
+        return key === undefined || !localKeys.has(key)
+      }),
+      ...extras,
+    ],
+  }
 }
 
 export async function loadPluginCatalog({

@@ -8,6 +8,7 @@ import {
   PLUGIN_TOPIC_URL,
   normalizePluginCatalog,
   readExtraPluginEntries,
+  withLocalEntries,
 } from '../src/plugin-catalog.js'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
@@ -31,7 +32,6 @@ if (!topicHtml.includes('<title>dsh-plugin · GitHub Topics · GitHub')) {
 const registryText = await download(PLUGIN_REGISTRY_URL, 'application/json')
 const registry = JSON.parse(registryText)
 const extraPlugins = readExtraPluginEntries(extraPath)
-registry.plugins = [...(Array.isArray(registry.plugins) ? registry.plugins : []), ...extraPlugins]
-const catalog = normalizePluginCatalog(registry, { generatedAt: new Date().toISOString() })
+const catalog = normalizePluginCatalog(withLocalEntries(registry, extraPlugins), { generatedAt: new Date().toISOString() })
 writeFileSync(outputPath, `${JSON.stringify(catalog, undefined, 2)}\n`)
 console.log(`Wrote ${String(catalog.count)} installable plugins (${extraPlugins.length} local entries) to ${outputPath}`)

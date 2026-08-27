@@ -65,7 +65,7 @@ test('seeds the bundled remote plugin with runtime dependencies and a registry s
   const sourceDir = join(directory, 'app', 'node_modules', 'ds-harness-remote')
   const dependencyDir = join(directory, 'app', 'node_modules', 'werift')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'ds-harness-remote', version: '0.3.34', dependencies: { werift: '0.24.4' },
+    name: 'ds-harness-remote', version: '0.3.35', dependencies: { werift: '0.24.4' },
     dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'index.js'), 'export {}\n')
@@ -80,7 +80,7 @@ test('seeds the bundled remote plugin with runtime dependencies and a registry s
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'index.js'), 'utf8'), 'export {}\n')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'werift', 'package.json'))).version, '0.24.4')
-  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /version: 0\.3\.34/)
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /version: 0\.3\.35/)
 
   let profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   profileManifest.dependencies['ds-harness-remote'] = 'github:liguobao/deepseek-harness-remote#ae70ff87afd0ac176f0f4105b23a417a97a1dd04'
@@ -90,7 +90,7 @@ test('seeds the bundled remote plugin with runtime dependencies and a registry s
   profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   assert.equal(
     profileManifest.dependencies['ds-harness-remote'],
-    '0.3.34',
+    '0.3.35',
   )
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'index.js'), 'utf8'), 'export {}\n')
 
@@ -114,7 +114,7 @@ test('seeds the bundled remote plugin when an older release marked the default a
     seen: ['github:liguobao/deepseek-harness-remote'],
   })
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'ds-harness-remote', version: '0.3.34',
+    name: 'ds-harness-remote', version: '0.3.35',
     dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'index.js'), 'export {}\n')
@@ -142,16 +142,16 @@ test('upgrades an older exact bundled remote version from the desktop bundle', a
   })
   writeFileSync(join(targetDir, 'legacy.js'), 'old\n')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'ds-harness-remote', version: '0.3.34', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'ds-harness-remote', version: '0.3.35', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'index.js'), 'new\n')
 
   await installBundledRemotePlugin({ dshHome, sourceDir })
 
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, '0.3.34')
+  assert.equal(plugin.requested, '0.3.35')
   assert.equal(plugin.source, 'npm')
-  assert.equal(plugin.version, '0.3.34')
+  assert.equal(plugin.version, '0.3.35')
   assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
   assert.equal(readFileSync(join(targetDir, 'index.js'), 'utf8'), 'new\n')
 })
@@ -322,7 +322,7 @@ test('upgrades the previous bundled remote release without overwriting online up
   })
   writeFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'old.js'), 'broken\n')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'ds-harness-remote', version: '0.3.34', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'ds-harness-remote', version: '0.3.35', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'fixed.js'), 'fixed\n')
 
@@ -332,8 +332,8 @@ test('upgrades the previous bundled remote release without overwriting online up
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'fixed.js'), 'utf8'), 'fixed\n')
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
   assert.equal(plugin.name, 'ds-harness-remote')
-  assert.equal(plugin.requested, '0.3.34')
-  assert.equal(plugin.version, '0.3.34')
+  assert.equal(plugin.requested, '0.3.35')
+  assert.equal(plugin.version, '0.3.35')
   const nextManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   assert.equal(nextManifest.dependencies['dsh-remote'], undefined)
   assert.equal(nextManifest.dsh.profile.bundles.includes('dsh-remote'), false)
@@ -717,6 +717,61 @@ test('updates a GitHub plugin from the default branch and preserves its disabled
     name: '@example/github-plugin',
     runGitImpl,
     runPnpmImpl: async () => assert.fail('pnpm should not run when the plugin is current'),
+  })
+  assert.equal(unchanged.upToDate, true)
+})
+
+test('updates an npm plugin to the latest registry version and preserves its disabled state', async (t) => {
+  const dshHome = temporaryDirectory(t)
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const profileManifest = join(profileDir, 'package.json')
+  writeJson(profileManifest, {
+    name: 'dsh-profile-web',
+    private: true,
+    dependencies: { 'dsh-file-viewer': '0.2.4' },
+    dsh: { profile: { bundles: [] } },
+  })
+  writeJson(join(profileDir, 'node_modules', 'dsh-file-viewer', 'package.json'), {
+    name: 'dsh-file-viewer', version: '0.2.4', dsh: { bundle: { patch: 'cordis.patch.yml' } },
+  })
+  const pnpmCalls = []
+  const runPnpmImpl = async ({ args }) => {
+    pnpmCalls.push(args)
+    if (args[0] === 'view') return { output: '0.2.5\n' }
+    const manifest = JSON.parse(readFileSync(profileManifest, 'utf8'))
+    manifest.dependencies['dsh-file-viewer'] = '0.2.5'
+    writeJson(profileManifest, manifest)
+    writeJson(join(profileDir, 'node_modules', 'dsh-file-viewer', 'package.json'), {
+      name: 'dsh-file-viewer', version: '0.2.5', dsh: { bundle: { patch: 'cordis.patch.yml' } },
+    })
+    return { output: '' }
+  }
+
+  const catalog = await updatePlugin({
+    dshHome,
+    pnpmEntry: '/pnpm.mjs',
+    name: 'dsh-file-viewer',
+    runGitImpl: async () => assert.fail('git should not run for npm updates'),
+    runPnpmImpl,
+  })
+  assert.deepEqual(pnpmCalls, [
+    ['view', 'dsh-file-viewer', 'version'],
+    ['add', '--workspace-root', '--save-prod', '--reporter', 'append-only', 'dsh-file-viewer@0.2.5'],
+  ])
+  assert.equal(catalog.upToDate, false)
+  assert.equal(catalog.plugins[0].requested, '0.2.5')
+  assert.equal(catalog.plugins[0].version, '0.2.5')
+  assert.equal(catalog.plugins[0].source, 'npm')
+  assert.equal(catalog.plugins[0].enabled, false)
+
+  const unchanged = await updatePlugin({
+    dshHome,
+    pnpmEntry: '/pnpm.mjs',
+    name: 'dsh-file-viewer',
+    runPnpmImpl: async ({ args }) => {
+      assert.deepEqual(args, ['view', 'dsh-file-viewer', 'version'])
+      return { output: '0.2.5\n' }
+    },
   })
   assert.equal(unchanged.upToDate, true)
 })

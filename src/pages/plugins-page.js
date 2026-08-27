@@ -18,7 +18,7 @@
     noMatches: '没有符合搜索条件的插件。', onlineEmpty: '暂无可安装的在线插件。', inspect: '查看源码', catalogInstall: '安装', catalogInstalled: '已安装',
     empty: '尚未安装用户插件。', system: '系统 Bundle', systemNote: 'web profile 运行所必需', loading: '正在加载…',
     enabled: '已启用', disabled: '已停用', invalid: '不是 DSH 插件', missing: '文件缺失', bundled: '随 Harness 提供',
-    enable: '启用', disable: '停用', update: '在线更新', updating: '正在获取默认分支最新版…', uninstall: '卸载', confirmRemove: name => `确定要卸载 ${name} 吗？`,
+    enable: '启用', disable: '停用', update: '在线更新', updating: '正在检查最新版本…', uninstall: '卸载', confirmRemove: name => `确定要卸载 ${name} 吗？`,
     restartText: '插件设置已更改，需要重启 Harness 后生效。', restart: '立即重启', restarting: '正在重启…',
     installedMessage: '插件安装完成。', updated: '插件已更新。', upToDate: '已是最新版本。', removed: '插件已卸载。', changed: '插件状态已更新。',
     buildSkipped: '仓库需要运行构建脚本，当前插件尚未启用。检查源码后，勾选构建脚本授权并重新安装。',
@@ -40,7 +40,7 @@
     noMatches: 'No plugins match this search.', onlineEmpty: 'No online plugins are available.', inspect: 'View source', catalogInstall: 'Install', catalogInstalled: 'Installed',
     empty: 'No user plugins are installed.', system: 'System bundles', systemNote: 'Required by the web profile', loading: 'Loading…',
     enabled: 'Enabled', disabled: 'Disabled', invalid: 'Not a DSH plugin', missing: 'Files missing', bundled: 'Bundled with Harness',
-    enable: 'Enable', disable: 'Disable', update: 'Update online', updating: 'Fetching the latest default branch…', uninstall: 'Uninstall', confirmRemove: name => `Uninstall ${name}?`,
+    enable: 'Enable', disable: 'Disable', update: 'Update online', updating: 'Checking for the latest version…', uninstall: 'Uninstall', confirmRemove: name => `Uninstall ${name}?`,
     restartText: 'Plugin settings changed. Restart Harness to apply them.', restart: 'Restart now', restarting: 'Restarting…',
     installedMessage: 'Plugin installed.', updated: 'Plugin updated.', upToDate: 'Already up to date.', removed: 'Plugin uninstalled.', changed: 'Plugin status updated.',
     buildSkipped: 'This repository requires build scripts, so the plugin was not enabled. Review the source, allow build scripts, and install it again.',
@@ -252,7 +252,7 @@
       actions.append(textElement('span', `status${plugin.enabled ? '' : ' status--off'}`, plugin.enabled ? strings.enabled : strings.disabled))
       actions.append(toggleButton(plugin.enabled, `${plugin.enabled ? strings.disable : strings.enable} ${plugin.name}`, () => void changeEnabled(plugin.name, !plugin.enabled)))
     }
-    if (!system && plugin.source === 'github' && plugin.installed) {
+    if (!system && plugin.installed) {
       actions.append(actionButton(strings.update, 'button button--small', () => void update(plugin.name)))
     }
     if (!system) actions.append(actionButton(strings.uninstall, 'button button--danger button--small', () => void uninstall(plugin.name)))
