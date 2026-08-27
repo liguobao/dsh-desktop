@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import test from 'node:test'
 import {
+  DEFAULT_PLUGINS,
   ensureDefaultPlugins,
   ensureProfileInitialized,
   installBundledFileViewerPlugin,
@@ -52,6 +53,10 @@ test('accepts registry plugin specs and rejects command or path input', () => {
   assert.throws(() => normalizePluginSpec('https://example.com/plugin.tgz'), /npm package name/)
   assert.throws(() => normalizePluginSpec('plugin name'), /Invalid plugin package/)
   assert.throws(() => normalizePluginSpec('@deepseek-ai/dsh-base'), /System bundles are managed/)
+})
+
+test('keeps bundled desktop plugins out of online default installs', () => {
+  assert.deepEqual(DEFAULT_PLUGINS, [])
 })
 
 test('seeds the bundled remote plugin with runtime dependencies and a registry source', async (t) => {
@@ -122,6 +127,35 @@ test('seeds the bundled remote plugin when an older release marked the default a
   assert.equal(catalog.plugins[0].installed, true)
 })
 
+test('upgrades an older exact bundled remote version from the desktop bundle', async (t) => {
+  const directory = temporaryDirectory(t)
+  const dshHome = join(directory, 'dsh-home')
+  const profileDir = ensureProfileInitialized(dshHome)
+  const sourceDir = join(directory, 'app', 'node_modules', 'ds-harness-remote')
+  const targetDir = join(profileDir, 'node_modules', 'ds-harness-remote')
+  const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+  profileManifest.dependencies['ds-harness-remote'] = '0.3.33'
+  profileManifest.dsh.profile.bundles.push('ds-harness-remote')
+  writeJson(join(profileDir, 'package.json'), profileManifest)
+  writeJson(join(targetDir, 'package.json'), {
+    name: 'ds-harness-remote', version: '0.3.33', dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(targetDir, 'legacy.js'), 'old\n')
+  writeJson(join(sourceDir, 'package.json'), {
+    name: 'ds-harness-remote', version: '0.3.34', dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(sourceDir, 'index.js'), 'new\n')
+
+  await installBundledRemotePlugin({ dshHome, sourceDir })
+
+  const plugin = readPluginCatalog({ dshHome }).plugins[0]
+  assert.equal(plugin.requested, '0.3.34')
+  assert.equal(plugin.source, 'npm')
+  assert.equal(plugin.version, '0.3.34')
+  assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
+  assert.equal(readFileSync(join(targetDir, 'index.js'), 'utf8'), 'new\n')
+})
+
 test('seeds the bundled file viewer with its runtime dependency closure and a registry source', async (t) => {
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
@@ -149,6 +183,35 @@ test('seeds the bundled file viewer with its runtime dependency closure and a re
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'markdown-it', 'package.json'))).version, '14.1.0')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], '0.2.5')
   assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /version: 0\.2\.5/)
+})
+
+test('upgrades an older exact bundled file viewer version from the desktop bundle', async (t) => {
+  const directory = temporaryDirectory(t)
+  const dshHome = join(directory, 'dsh-home')
+  const profileDir = ensureProfileInitialized(dshHome)
+  const sourceDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
+  const targetDir = join(profileDir, 'node_modules', 'dsh-file-viewer')
+  const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+  profileManifest.dependencies['dsh-file-viewer'] = '0.2.4'
+  profileManifest.dsh.profile.bundles.push('dsh-file-viewer')
+  writeJson(join(profileDir, 'package.json'), profileManifest)
+  writeJson(join(targetDir, 'package.json'), {
+    name: 'dsh-file-viewer', version: '0.2.4', dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(targetDir, 'legacy.js'), 'old\n')
+  writeJson(join(sourceDir, 'package.json'), {
+    name: 'dsh-file-viewer', version: '0.2.5', dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(sourceDir, 'index.js'), 'new\n')
+
+  await installBundledFileViewerPlugin({ dshHome, sourceDir })
+
+  const plugin = readPluginCatalog({ dshHome }).plugins[0]
+  assert.equal(plugin.requested, '0.2.5')
+  assert.equal(plugin.source, 'npm')
+  assert.equal(plugin.version, '0.2.5')
+  assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
+  assert.equal(readFileSync(join(targetDir, 'index.js'), 'utf8'), 'new\n')
 })
 
 test('upgrades the npm file viewer bundle to the current registry release', async (t) => {

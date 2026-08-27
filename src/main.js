@@ -934,9 +934,8 @@ if (!hasLock) {
     initializeAutoUpdates()
     buildMenu()
     void startHarness().then(started => {
-      // A missing default plugin may require GitHub and pnpm network access. Keep that
-      // work out of the critical startup path so an unavailable registry or
-      // repository can never hold the splash screen at its initial 8% state.
+      // Optional online defaults stay out of the critical startup path. The
+      // Desktop-bundled plugins are already prepared locally before Harness starts.
       if (started) void installDefaultPlugins()
     })
   }).catch((error) => {

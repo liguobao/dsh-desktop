@@ -8,6 +8,7 @@ import {
 } from 'node:fs'
 import { cp, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import semver from 'semver'
 import { parse, stringify } from 'yaml'
 
 export const PLUGIN_PROFILE = 'web'
@@ -17,13 +18,14 @@ export const SYSTEM_BUNDLES = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/ds
 const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
 const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
-/** Bundled plugins installed automatically on a fresh profile. */
-export const DEFAULT_PLUGINS = [
-  'github:liguobao/deepseek-harness-remote',
-  'github:liguobao/dsh-file-viewer',
-]
 export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.3.34'
 export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.2.5'
+/** Optional online defaults. Desktop-bundled plugins are prepared locally before Harness starts. */
+export const DEFAULT_PLUGINS = []
+const DEFAULT_PLUGIN_SEEN_ALIASES = new Map([
+  ['npm:ds-harness-remote', ['github:liguobao/deepseek-harness-remote']],
+  ['npm:dsh-file-viewer', ['github:liguobao/dsh-file-viewer']],
+])
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   'github:liguobao/deepseek-harness-remote#3f8bd3b17f84fc6d8e04adabe2b078b1bbcd88e2',
   'github:liguobao/deepseek-harness-remote#v0.3.34',
@@ -142,6 +144,10 @@ function defaultPluginKey(normalized) {
   return normalized.source === 'github'
     ? `github:${normalized.repository.toLowerCase()}${normalized.path === undefined ? '' : `#path:${normalized.path}`}`
     : `npm:${normalized.packageName}`
+}
+
+function defaultPluginAlreadySeen(seen, key) {
+  return seen.has(key) || (DEFAULT_PLUGIN_SEEN_ALIASES.get(key) ?? []).some(alias => seen.has(alias))
 }
 
 function shortCommitRef(ref) {
@@ -300,6 +306,10 @@ export async function installBundledPlugin({
   if (declared && existsSync(join(targetPlugin, 'package.json'))) {
     const declaredSpec = profileManifest.dependencies[packageName]
     const needsMigration = legacySpecs.has(declaredSpec)
+      || (normalized.source === 'npm'
+        && semver.valid(declaredSpec) === declaredSpec
+        && semver.valid(sourceManifest.version) === sourceManifest.version
+        && semver.lt(declaredSpec, sourceManifest.version))
     const needsBundledRepair = declaredSpec === dependencySpecifier
       && !bundledPluginFilesAvailable(targetPlugin, sourceManifest)
     if (!needsMigration && !needsBundledRepair) return targetPlugin
@@ -974,7 +984,13 @@ export async function ensureDefaultPlugins({
     if (typeof spec !== 'string' || spec.trim() === '') continue
     const normalized = normalizePluginSpec(spec)
     const key = defaultPluginKey(normalized)
-    if (seen.has(key)) continue
+    if (defaultPluginAlreadySeen(seen, key)) {
+      if (!seen.has(key)) {
+        seen.add(key)
+        writeDefaultPluginState(profileDir, { version: 1, seen: [...seen] })
+      }
+      continue
+    }
     const catalog = readPluginCatalog({ dshHome, profile })
     const alreadyInstalled = catalog.plugins.some(plugin => plugin.installed && (
       normalized.source === 'github' ? pluginUsesGitHubSource(plugin, normalized) : plugin.name === normalized.packageName
