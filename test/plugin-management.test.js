@@ -54,7 +54,7 @@ test('accepts registry plugin specs and rejects command or path input', () => {
   assert.throws(() => normalizePluginSpec('@deepseek-ai/dsh-base'), /System bundles are managed/)
 })
 
-test('seeds the bundled remote plugin with runtime dependencies and an updateable GitHub source', async (t) => {
+test('seeds the bundled remote plugin with runtime dependencies and a registry source', async (t) => {
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
   const sourceDir = join(directory, 'app', 'node_modules', 'ds-harness-remote')
@@ -71,11 +71,11 @@ test('seeds the bundled remote plugin with runtime dependencies and an updateabl
   const profileDir = join(dshHome, 'profiles', 'web')
   const catalog = readPluginCatalog({ dshHome })
   assert.equal(catalog.plugins[0].name, 'ds-harness-remote')
-  assert.equal(catalog.plugins[0].source, 'github')
+  assert.equal(catalog.plugins[0].source, 'npm')
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'index.js'), 'utf8'), 'export {}\n')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'werift', 'package.json'))).version, '0.24.4')
-  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /3f8bd3b17f84fc6d8e04adabe2b078b1bbcd88e2/)
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /version: 0\.3\.34/)
 
   let profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   profileManifest.dependencies['ds-harness-remote'] = 'github:liguobao/deepseek-harness-remote#ae70ff87afd0ac176f0f4105b23a417a97a1dd04'
@@ -85,7 +85,7 @@ test('seeds the bundled remote plugin with runtime dependencies and an updateabl
   profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   assert.equal(
     profileManifest.dependencies['ds-harness-remote'],
-    'github:liguobao/deepseek-harness-remote#3f8bd3b17f84fc6d8e04adabe2b078b1bbcd88e2',
+    '0.3.34',
   )
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'index.js'), 'utf8'), 'export {}\n')
 
@@ -122,7 +122,7 @@ test('seeds the bundled remote plugin when an older release marked the default a
   assert.equal(catalog.plugins[0].installed, true)
 })
 
-test('seeds the bundled GitHub file viewer with its runtime dependency closure', async (t) => {
+test('seeds the bundled file viewer with its runtime dependency closure and a registry source', async (t) => {
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
   const sourceDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
@@ -142,16 +142,16 @@ test('seeds the bundled GitHub file viewer with its runtime dependency closure',
   const profileDir = join(dshHome, 'profiles', 'web')
   const catalog = readPluginCatalog({ dshHome })
   assert.equal(catalog.plugins[0].name, 'dsh-file-viewer')
-  assert.equal(catalog.plugins[0].source, 'github')
+  assert.equal(catalog.plugins[0].source, 'npm')
   assert.equal(catalog.plugins[0].version, '0.2.5')
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-file-viewer', 'index.js'), 'utf8'), 'export {}\n')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'markdown-it', 'package.json'))).version, '14.1.0')
-  assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], 'github:liguobao/dsh-file-viewer#b28be6bad250a6bd52c81b3609faa88d2de10c39')
-  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /b28be6bad250a6bd52c81b3609faa88d2de10c39/)
+  assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], '0.2.5')
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /version: 0\.2\.5/)
 })
 
-test('upgrades the npm file viewer bundle back to the online-updateable GitHub release', async (t) => {
+test('upgrades the npm file viewer bundle to the current registry release', async (t) => {
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
   const profileDir = ensureProfileInitialized(dshHome)
@@ -173,15 +173,15 @@ test('upgrades the npm file viewer bundle back to the online-updateable GitHub r
   await installBundledFileViewerPlugin({ dshHome, sourceDir })
 
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, 'github:liguobao/dsh-file-viewer#b28be6bad250a6bd52c81b3609faa88d2de10c39')
-  assert.equal(plugin.source, 'github')
+  assert.equal(plugin.requested, '0.2.5')
+  assert.equal(plugin.source, 'npm')
   assert.equal(plugin.version, '0.2.5')
   assert.equal(plugin.enabled, true)
   assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
   assert.equal(readFileSync(join(targetDir, 'index.js'), 'utf8'), 'new\n')
 })
 
-test('upgrades the previous bundled GitHub file viewer release', async (t) => {
+test('upgrades a previous bundled GitHub file viewer release', async (t) => {
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
   const profileDir = ensureProfileInitialized(dshHome)
@@ -203,7 +203,7 @@ test('upgrades the previous bundled GitHub file viewer release', async (t) => {
   await installBundledFileViewerPlugin({ dshHome, sourceDir })
 
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, 'github:liguobao/dsh-file-viewer#b28be6bad250a6bd52c81b3609faa88d2de10c39')
+  assert.equal(plugin.requested, '0.2.5')
   assert.equal(plugin.version, '0.2.5')
   assert.equal(plugin.enabled, true)
   assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
@@ -215,13 +215,13 @@ test('repairs a bundled file viewer whose ignored prepare script left its dist m
   const profileDir = ensureProfileInitialized(dshHome)
   const sourceDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
   const targetDir = join(profileDir, 'node_modules', 'dsh-file-viewer')
-  const releasedSpec = 'github:liguobao/dsh-file-viewer#v0.2.3'
+  const releasedSpec = 'github:liguobao/dsh-file-viewer#7fbfc7b8092c6ca1935b19b7563761a5600df522'
   const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   profileManifest.dependencies['dsh-file-viewer'] = releasedSpec
   profileManifest.dsh.profile.bundles.push('dsh-file-viewer')
   writeJson(join(profileDir, 'package.json'), profileManifest)
   writeJson(join(targetDir, 'package.json'), {
-    name: 'dsh-file-viewer', version: '0.2.3', main: './dist/index.js',
+    name: 'dsh-file-viewer', version: '0.2.4', main: './dist/index.js',
     dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(targetDir, 'cordis.patch.yml'), 'include: []\n')
@@ -240,7 +240,7 @@ test('repairs a bundled file viewer whose ignored prepare script left its dist m
   assert.equal(existsSync(join(targetDir, 'incomplete.js')), false)
   assert.equal(
     JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'],
-    'github:liguobao/dsh-file-viewer#b28be6bad250a6bd52c81b3609faa88d2de10c39',
+    '0.2.5',
   )
 })
 
@@ -269,7 +269,7 @@ test('upgrades the previous bundled remote release without overwriting online up
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'fixed.js'), 'utf8'), 'fixed\n')
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
   assert.equal(plugin.name, 'ds-harness-remote')
-  assert.equal(plugin.requested, 'github:liguobao/deepseek-harness-remote#3f8bd3b17f84fc6d8e04adabe2b078b1bbcd88e2')
+  assert.equal(plugin.requested, '0.3.34')
   assert.equal(plugin.version, '0.3.34')
   const nextManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   assert.equal(nextManifest.dependencies['dsh-remote'], undefined)
