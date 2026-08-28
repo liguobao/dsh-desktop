@@ -56,7 +56,7 @@ DSH Desktop 会检查 GitHub Releases。下载并校验对应平台的安装包�
 
 ## 本地开发
 
-需要 Node.js 22 或更高版本，以及 npm 10 或更高版本。
+需要 Node.js 24 或更高版本，以及 npm 10 或更高版本。
 
 ```bash
 git clone https://github.com/liguobao/dsh-desktop.git

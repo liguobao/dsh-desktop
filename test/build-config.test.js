@@ -7,6 +7,7 @@ const packageLock = JSON.parse(readFileSync(new URL('../package-lock.json', impo
 const buildWorkflow = readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8')
 const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
 const readmeZh = readFileSync(new URL('../README.zh-CN.md', import.meta.url), 'utf8')
+const nodeVersion = readFileSync(new URL('../.node-version', import.meta.url), 'utf8').trim()
 
 test('Windows build produces installer and portable packages', () => {
   assert.deepEqual(packageJson.build.win.target, ['nsis', 'portable'])
@@ -19,8 +20,17 @@ test('release builds bundle pnpm for profile plugin management', () => {
   assert.match(packageJson.dependencies.pnpm, /^\d+\.\d+\.\d+$/)
 })
 
+test('development and CI use Node.js 24', () => {
+  assert.equal(packageJson.engines.node, '>=24')
+  assert.equal(packageLock.packages[''].engines.node, '>=24')
+  assert.equal(nodeVersion, '24')
+  assert.match(buildWorkflow, /node-version: 24/)
+  assert.match(readme, /Requires Node\.js 24 or newer/)
+  assert.match(readmeZh, /需要 Node\.js 24 或更高版本/)
+})
+
 test('release builds bundle the prebuilt remote plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.3.35')
+  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.0')
   assert.equal(existsSync(new URL('../node_modules/ds-harness-remote/dist/index.js', import.meta.url)), true)
   const client = readFileSync(new URL('../node_modules/ds-harness-remote/dist/client.js', import.meta.url), 'utf8')
   assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"ds-harness-remote"/)
@@ -44,10 +54,14 @@ test('release notes and download docs include the mirror and remote Android APK'
 })
 
 test('release builds bundle the prebuilt file viewer plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['dsh-file-viewer'], '0.2.5')
+  assert.equal(packageJson.dependencies['dsh-file-viewer'], '0.3.0')
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/index.js', import.meta.url)), true)
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/client.js', import.meta.url)), true)
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/cordis.patch.yml', import.meta.url)), true)
+  const manifest = JSON.parse(readFileSync(new URL('../node_modules/dsh-file-viewer/package.json', import.meta.url), 'utf8'))
+  assert.equal(manifest.version, '0.3.0')
+  assert.equal(manifest.peerDependencies['@deepseek-ai/dsh-client-runtime'], undefined)
+  assert.equal(manifest.peerDependencies['@deepseek-ai/dsh-host-apiproxy'], undefined)
 })
 
 test('release builds do not bundle the Codex subagent', () => {

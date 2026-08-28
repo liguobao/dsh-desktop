@@ -16,7 +16,6 @@ test('desktop adapter is a standalone dual-face DSH client package', () => {
   assert.equal(manifest.exports['./client'], './lib/client.js')
   assert.equal(manifest.dsh.client.platform, 'web')
   assert.deepEqual(manifest.dsh.client.inject, [
-    '@deepseek-ai/dsh-client-runtime',
     '@deepseek-ai/dsh-client-locale',
     '@deepseek-ai/dsh-client-ui-conversation',
     '@deepseek-ai/dsh-client-ui-workspace',

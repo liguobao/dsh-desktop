@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import process from 'node:process'
 import { spawn as nodeSpawn } from 'node:child_process'
 
-const READY_URL = /(?:^|\n)dsh web:\s+(http:\/\/127\.0\.0\.1:\d+)(?:\s|$)/
+const READY_URL = /(?:^|\n)dsh web:\s+(http:\/\/127\.0\.0\.1:\d+(?:\/[^\s]*)?)(?:\s|$)/
 
 /** Build the DSH Web invocation used by the embedded desktop server. */
 export function buildHarnessArgs({ entry, parentWatch, patch }) {

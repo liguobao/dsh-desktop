@@ -1,5 +1,5 @@
 diff --git a/node_modules/@deepseek-ai/dsh-host-directory-picker-native/lib/worker.cjs b/node_modules/@deepseek-ai/dsh-host-directory-picker-native/lib/worker.cjs
-index 14f4584..9e13a55 100644
+index 904b565..9e13a55 100644
 --- a/node_modules/@deepseek-ai/dsh-host-directory-picker-native/lib/worker.cjs
 +++ b/node_modules/@deepseek-ai/dsh-host-directory-picker-native/lib/worker.cjs
 @@ -14,15 +14,12 @@
@@ -16,7 +16,7 @@ index 14f4584..9e13a55 100644
  function readUtf16(koffi, address) {
 -	const bytes = Buffer.from(koffi.view(address, 32768));
 -	let end = 0;
--	while (end + 1 < bytes.length && bytes[end] !== 0) end += 2;
+-	while (end + 1 < bytes.length && !(bytes[end] === 0 && bytes[end + 1] === 0)) end += 2;
 -	return bytes.toString("utf16le", 0, end);
 +	return koffi.decode.string16(address);
  }

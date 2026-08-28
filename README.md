@@ -56,7 +56,7 @@ DSH Desktop checks GitHub Releases for updates. After downloading and verifying 
 
 ## Development
 
-Requires Node.js 22 or newer and npm 10 or newer.
+Requires Node.js 24 or newer and npm 10 or newer.
 
 ```bash
 git clone https://github.com/liguobao/dsh-desktop.git

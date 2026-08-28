@@ -18,8 +18,8 @@ export const SYSTEM_BUNDLES = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/ds
 const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
 const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 
-export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.3.35'
-export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.2.5'
+export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.4.0'
+export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.3.0'
 /** Optional online defaults. Desktop-bundled plugins are prepared locally before Harness starts. */
 export const DEFAULT_PLUGINS = []
 const DEFAULT_PLUGIN_SEEN_ALIASES = new Map([
@@ -917,7 +917,12 @@ export async function updatePlugin({
       signal,
       runPnpmImpl,
     })
-    if (plugin.version === latestVersion) return { ...before, upToDate: true }
+    const currentVersion = semver.valid(plugin.version)
+    const normalizedLatestVersion = semver.valid(latestVersion)
+    if (
+      plugin.version === latestVersion
+      || (currentVersion !== null && normalizedLatestVersion !== null && semver.gte(currentVersion, normalizedLatestVersion))
+    ) return { ...before, upToDate: true }
 
     const wasEnabled = plugin.enabled
     const result = await installPlugin({

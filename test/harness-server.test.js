@@ -47,8 +47,8 @@ test('resolves after a split readiness line and captures output', async () => {
   })
   const ready = server.start()
   child.stdout.write('booting\ndsh web: http://127.0.0.')
-  child.stdout.write('1:45678\n')
-  assert.equal(await ready, 'http://127.0.0.1:45678')
+  child.stdout.write('1:45678/?token=abc_DEF-123 (LAN: http://192.168.1.5:45678/?token=abc_DEF-123)\n')
+  assert.equal(await ready, 'http://127.0.0.1:45678/?token=abc_DEF-123')
   assert.equal(output.length, 2)
 })
 
