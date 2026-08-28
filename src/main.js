@@ -19,6 +19,7 @@ import {
   selectedEditor,
   writeDesktopSettings,
 } from './desktop-integration.js'
+import { repairDesktopEnvironment } from './environment-repair.js'
 import { buildHarnessArgs, HarnessServer } from './harness-server.js'
 import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
 import { loadPluginCatalog, normalizePluginSourceUrl } from './plugin-catalog.js'
@@ -54,6 +55,10 @@ function setLocale(locale) {
       stopped: 'DeepSeek Harness 已停止',
       openLogs: '打开日志目录',
       retry: '重启 Harness',
+      repairEnvironment: '修复运行环境',
+      repairEnvironmentBusy: '运行环境修复正在进行',
+      repairEnvironmentFailed: '运行环境修复失败',
+      windowCrashed: 'DSH Desktop 窗口崩溃',
       view: '视图',
       reload: '重新加载',
       actualSize: '实际大小',
@@ -82,6 +87,10 @@ function setLocale(locale) {
       stopped: 'DeepSeek Harness stopped',
       openLogs: 'Open Logs Folder',
       retry: 'Restart Harness',
+      repairEnvironment: 'Repair Runtime Environment',
+      repairEnvironmentBusy: 'Runtime environment repair is already running',
+      repairEnvironmentFailed: 'Runtime environment repair failed',
+      windowCrashed: 'DSH Desktop window crashed',
       view: 'View',
       reload: 'Reload',
       actualSize: 'Actual Size',
@@ -126,6 +135,7 @@ let pluginOperationController
 let defaultPluginInstallController
 let updateController
 let updateCheckTimer
+let environmentRepairRunning = false
 
 function writeLog(source, text) {
   const prefix = `[${new Date().toISOString()}] [${source}] `
@@ -184,6 +194,19 @@ function senderIsPluginManager(event) {
   if (pluginWindow?.isDestroyed() !== false || event.sender !== pluginWindow.webContents) return false
   try {
     return fileURLToPath(event.senderFrame?.url ?? event.sender.getURL()) === pagePath('plugins.html')
+  } catch {
+    return false
+  }
+}
+
+function senderIsEnvironmentRepairPage(event) {
+  if (
+    event.sender !== mainWindow?.webContents
+    && event.sender !== aboutWindow?.webContents
+  ) return false
+  try {
+    const path = fileURLToPath(event.senderFrame?.url ?? event.sender.getURL())
+    return path === pagePath('error.html') || path === pagePath('about.html')
   } catch {
     return false
   }
@@ -335,6 +358,10 @@ function installDesktopIpc() {
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
   })
+  ipcMain.handle('dsh-desktop:repair-environment', async (event) => {
+    if (!senderIsEnvironmentRepairPage(event)) return { ok: false, error: 'Untrusted repair request' }
+    return repairEnvironmentAndRestart()
+  })
 }
 
 async function runPluginOperation(action) {
@@ -405,6 +432,54 @@ function aboutVersions() {
     dsh: bundledPackageVersion('@deepseek-ai/dsh'),
     remote: aboutPluginVersion('ds-harness-remote'),
     fileViewer: aboutPluginVersion('dsh-file-viewer'),
+  }
+}
+
+function repairReportDetail(report) {
+  return report.actions
+    .map(action => `[${action.status}] ${action.kind}: ${action.detail}`)
+    .join('\n')
+}
+
+async function repairEnvironmentAndRestart() {
+  if (environmentRepairRunning) return { ok: false, error: copy.repairEnvironmentBusy }
+  environmentRepairRunning = true
+  restartGeneration += 1
+  buildMenu()
+  try {
+    writeLog('desktop', 'Runtime environment repair requested.\n')
+    if (server !== undefined) {
+      await server.stop()
+      server = undefined
+    }
+    const report = await repairDesktopEnvironment({
+      dshHome,
+      toolchainDirectory: join(app.getPath('userData'), 'toolchain'),
+      execPath: process.execPath,
+      pnpmEntry: resolvePnpmEntry(),
+      desktopPluginDir: join(import.meta.dirname, 'plugins', 'dsh-desktop-integration'),
+      remotePluginDir: dirname(require.resolve('ds-harness-remote/package.json')),
+      fileViewerPluginDir: dirname(require.resolve('dsh-file-viewer/package.json')),
+      env: process.env,
+      onOutput: writeLog,
+    })
+    harnessEnv = report.env
+    const { env: _env, ...publicReport } = report
+    writeLog('desktop', `${repairReportDetail(report)}\n`)
+    if (report.ok) {
+      void startHarness(copy.restarting)
+    } else {
+      await showError(copy.repairEnvironmentFailed, repairReportDetail(report))
+    }
+    return { ok: report.ok, report: publicReport }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    writeLog('stderr', `${copy.repairEnvironmentFailed}: ${detail}\n`)
+    await showError(copy.repairEnvironmentFailed, detail)
+    return { ok: false, error: detail }
+  } finally {
+    environmentRepairRunning = false
+    buildMenu()
   }
 }
 
@@ -559,6 +634,12 @@ function createWindow() {
     },
   })
   installNavigationPolicy(window)
+  window.webContents.on('render-process-gone', (_event, details) => {
+    if (quitting || window !== mainWindow || isDesktopPage(window.webContents.getURL())) return
+    const detail = `Reason: ${details.reason}, exit code: ${String(details.exitCode)}`
+    writeLog('stderr', `${copy.windowCrashed}: ${detail}\n`)
+    void showError(copy.windowCrashed, detail)
+  })
   window.on('closed', () => {
     mainWindow = undefined
     if (pluginWindow?.isDestroyed() === false) pluginWindow.close()
@@ -632,7 +713,7 @@ function showAbout() {
   if (focusManagerWindow(aboutWindow)) return
   aboutWindow = new BrowserWindow({
     width: 600,
-    height: 610,
+    height: 700,
     minWidth: 480,
     minHeight: 500,
     show: false,
@@ -641,6 +722,7 @@ function showAbout() {
     icon: join(import.meta.dirname, '..', 'assets', 'icon.png'),
     backgroundColor: '#f4f7fc',
     webPreferences: {
+      preload: join(import.meta.dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -862,6 +944,11 @@ function buildMenu() {
           enabled: updateItem.enabled,
           click: () => void updateController.check(true),
         }, { type: 'separator' }]),
+        {
+          label: copy.repairEnvironment,
+          enabled: !environmentRepairRunning,
+          click: () => void repairEnvironmentAndRestart(),
+        },
         { label: copy.openLogs, click: () => { if (logPath !== undefined) void shell.openPath(dirname(logPath)) } },
         { label: 'DeepSeek Harness', click: () => void shell.openExternal('https://github.com/deepseek-ai/deepseek-harness') },
         ...(process.platform === 'darwin' ? [] : [{ type: 'separator' }, { label: copy.about, click: showAbout }]),

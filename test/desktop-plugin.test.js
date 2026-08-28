@@ -53,8 +53,12 @@ test('preload and main process pass only recognized native open intents', () => 
   const preload = readFileSync(preloadUrl, 'utf8')
   const main = readFileSync(mainUrl, 'utf8')
   assert.match(preload, /openPath: \(path, intent = 'auto'\)/)
+  assert.match(preload, /repairEnvironment: \(\) => ipcRenderer\.invoke\('dsh-desktop:repair-environment'\)/)
   assert.match(main, /\['auto', 'editor', 'default'\]\.includes\(intent\)/)
   assert.match(main, /openDesktopPath\(path, intent\)/)
+  assert.match(main, /senderIsEnvironmentRepairPage\(event\)/)
+  assert.match(main, /ipcMain\.handle\('dsh-desktop:repair-environment'/)
+  assert.match(main, /render-process-gone/)
 })
 
 test('client adapter replaces and restores the Harness path action at runtime', async () => {

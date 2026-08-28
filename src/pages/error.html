@@ -14,8 +14,14 @@
       h1 { margin: 22px 0 12px; font-size: 24px; letter-spacing: -.02em; }
       p { color: #5c6980; line-height: 1.65; }
       pre { max-height: 220px; overflow: auto; padding: 16px; border-radius: 12px; color: #7b2632; background: #fff2f3; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 6px; }
+      button { max-width: 100%; min-height: 38px; border: 1px solid #315cf4; border-radius: 8px; padding: 8px 14px; color: white; background: #315cf4; font: inherit; font-weight: 650; line-height: 1.25; text-align: center; white-space: normal; cursor: pointer; }
+      button:hover { background: #2449ca; }
+      button:focus-visible { outline: 2px solid #315cf4; outline-offset: 2px; }
+      button:disabled { border-color: #b8c2d6; color: #6f7d94; background: #edf1f8; cursor: default; }
+      .status { min-height: 20px; margin: 0; color: #526078; font-size: 13px; }
       .hint { margin-bottom: 0; font-size: 13px; }
-      @media (prefers-color-scheme: dark) { body { color: #f2f6ff; background: #0c111b; } main { border-color: #273248; background: #151d2b; } p { color: #aebbd0; } pre { color: #ffb8c0; background: #311b22; } }
+      @media (prefers-color-scheme: dark) { body { color: #f2f6ff; background: #0c111b; } main { border-color: #273248; background: #151d2b; } p { color: #aebbd0; } pre { color: #ffb8c0; background: #311b22; } button:disabled { border-color: #3d4a61; color: #aebbd0; background: #263143; } .status { color: #aebbd0; } }
     </style>
   </head>
   <body>
@@ -24,16 +30,68 @@
       <h1 id="title">DeepSeek Harness failed to start</h1>
       <p id="summary">Use View → Restart Harness to try again.</p>
       <pre id="detail"></pre>
+      <div class="actions">
+        <button id="repair" type="button">Repair Runtime Environment</button>
+      </div>
+      <p class="status" id="repair-status"></p>
       <p class="hint" id="logs"></p>
     </main>
     <script>
       const query = new URLSearchParams(location.search)
       const zh = query.get('lang') === 'zh'
+      const strings = zh ? {
+          summary: '可以先使用“视图 → 重启 Harness”重试。如果仍然崩溃，也可以尝试修复运行环境并自动重启。',
+          repair: '修复运行环境并重启',
+          repairing: '正在修复运行环境…',
+          repaired: '修复完成，正在重启 Harness…',
+          failed: '修复失败，请查看下面的步骤结果。',
+          unavailable: '当前版本无法从此页面触发修复。',
+          unknown: '未知错误',
+          logs: '日志',
+        } : {
+          summary: 'Use View → Restart Harness to try again. If it still crashes, you can repair the runtime environment and restart automatically.',
+          repair: 'Repair Runtime Environment and Restart',
+          repairing: 'Repairing runtime environment…',
+          repaired: 'Repair complete. Restarting Harness…',
+          failed: 'Repair failed. Review the step results below.',
+          unavailable: 'Repair is not available from this page.',
+          unknown: 'Unknown error',
+          logs: 'Logs',
+        }
       document.documentElement.lang = zh ? 'zh-CN' : 'en'
       document.querySelector('#title').textContent = query.get('title') || (zh ? 'DeepSeek Harness 启动失败' : 'DeepSeek Harness failed to start')
-      document.querySelector('#summary').textContent = zh ? '请使用“视图 → 重启 Harness”重试。' : 'Use View → Restart Harness to try again.'
-      document.querySelector('#detail').textContent = query.get('detail') || (zh ? '未知错误' : 'Unknown error')
-      document.querySelector('#logs').textContent = `${zh ? '日志' : 'Logs'}: ${query.get('logs') || '-'}`
+      document.querySelector('#summary').textContent = strings.summary
+      document.querySelector('#detail').textContent = query.get('detail') || strings.unknown
+      document.querySelector('#logs').textContent = `${strings.logs}: ${query.get('logs') || '-'}`
+
+      const repairButton = document.querySelector('#repair')
+      const repairStatus = document.querySelector('#repair-status')
+      repairButton.textContent = strings.repair
+      repairButton.addEventListener('click', async () => {
+        if (window.dshDesktop?.repairEnvironment === undefined) {
+          repairStatus.textContent = strings.unavailable
+          return
+        }
+        repairButton.disabled = true
+        repairStatus.textContent = strings.repairing
+        try {
+          const result = await window.dshDesktop.repairEnvironment()
+          if (result?.ok) {
+            repairStatus.textContent = strings.repaired
+            return
+          }
+          const actions = result?.report?.actions ?? []
+          document.querySelector('#detail').textContent = actions.length === 0
+            ? result?.error || strings.unknown
+            : actions.map(action => `[${action.status}] ${action.kind}: ${action.detail}`).join('\n')
+          repairStatus.textContent = strings.failed
+          repairButton.disabled = false
+        } catch (error) {
+          document.querySelector('#detail').textContent = error instanceof Error ? error.message : String(error)
+          repairStatus.textContent = strings.failed
+          repairButton.disabled = false
+        }
+      })
     </script>
   </body>
 </html>

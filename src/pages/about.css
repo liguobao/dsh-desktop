@@ -110,7 +110,8 @@ dd {
   font-variant-numeric: tabular-nums;
 }
 
-.source-link {
+.source-link,
+.repair-panel {
   min-height: 62px;
   display: flex;
   align-items: center;
@@ -121,6 +122,9 @@ dd {
   padding: 11px 14px;
   color: var(--ink);
   background: var(--surface);
+}
+
+.source-link {
   text-decoration: none;
   transition: border-color 160ms ease-out, background-color 160ms ease-out;
 }
@@ -135,20 +139,57 @@ dd {
   outline-offset: 2px;
 }
 
-.source-link span:first-child {
+.source-link span:first-child,
+.repair-panel span:first-child {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
-.source-link strong { font-weight: 650; }
+.source-link strong,
+.repair-panel strong { font-weight: 650; }
 
-.source-link code {
+.source-link code,
+.repair-panel code {
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+.repair-button {
+  flex: none;
+  min-height: 38px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 0 14px;
+  color: #ffffff;
+  background: var(--accent);
+  font: inherit;
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  cursor: pointer;
+  transition: border-color 160ms ease-out, background-color 160ms ease-out, color 160ms ease-out;
+}
+
+.repair-button:hover {
+  border-color: #2449ca;
+  background: #2449ca;
+}
+
+.repair-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.repair-button:disabled {
+  border-color: var(--border);
+  color: var(--quiet);
+  background: var(--accent-soft);
+  cursor: default;
 }
 
 .external-mark {
@@ -188,8 +229,11 @@ footer p {
   .about-shell { width: min(100% - 32px, 620px); padding-top: 28px; }
   .section-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
   .section-heading p { text-align: left; }
+  .repair-panel { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .repair-button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .source-link { transition: none; }
+  .source-link,
+  .repair-button { transition: none; }
 }
