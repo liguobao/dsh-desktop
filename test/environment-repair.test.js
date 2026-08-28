@@ -71,7 +71,8 @@ test('repairs the Desktop-owned Harness runtime environment from bundled sources
     assert.equal(existsSync(join(dshHome, name)), true)
   }
   assert.equal(existsSync(join(dshHome, 'profiles', 'web', 'package.json')), true)
-  assert.match(readFileSync(join(toolchainDirectory, 'node'), 'utf8'), /ELECTRON_RUN_AS_NODE=1/)
+  const nodeLauncher = process.platform === 'win32' ? 'node.cmd' : 'node'
+  assert.match(readFileSync(join(toolchainDirectory, nodeLauncher), 'utf8'), /ELECTRON_RUN_AS_NODE=1/)
   assert.equal(
     readFileSync(join(dshHome, 'profiles', 'node_modules', '@dsh-desktop', 'integration', 'lib', 'client.js'), 'utf8'),
     'export {}\n',
