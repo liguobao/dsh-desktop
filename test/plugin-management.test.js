@@ -737,7 +737,7 @@ test('updates an npm plugin to the latest registry version and preserves its dis
   const pnpmCalls = []
   const runPnpmImpl = async ({ args }) => {
     pnpmCalls.push(args)
-    if (args[0] === 'view') return { output: '0.2.5\n' }
+    if (args[0] === 'config') return { output: 'https://registry.example.test/npm\n' }
     const manifest = JSON.parse(readFileSync(profileManifest, 'utf8'))
     manifest.dependencies['dsh-file-viewer'] = '0.2.5'
     writeJson(profileManifest, manifest)
@@ -751,11 +751,16 @@ test('updates an npm plugin to the latest registry version and preserves its dis
     dshHome,
     pnpmEntry: '/pnpm.mjs',
     name: 'dsh-file-viewer',
+    fetchImpl: async (url, options) => {
+      assert.equal(String(url), 'https://registry.example.test/npm/dsh-file-viewer/latest')
+      assert.equal(options.redirect, 'error')
+      return new Response(JSON.stringify({ version: '0.2.5' }))
+    },
     runGitImpl: async () => assert.fail('git should not run for npm updates'),
     runPnpmImpl,
   })
   assert.deepEqual(pnpmCalls, [
-    ['view', 'dsh-file-viewer', 'version'],
+    ['config', 'get', 'registry'],
     ['add', '--workspace-root', '--save-prod', '--reporter', 'append-only', 'dsh-file-viewer@0.2.5'],
   ])
   assert.equal(catalog.upToDate, false)
@@ -768,9 +773,10 @@ test('updates an npm plugin to the latest registry version and preserves its dis
     dshHome,
     pnpmEntry: '/pnpm.mjs',
     name: 'dsh-file-viewer',
+    fetchImpl: async () => new Response(JSON.stringify({ version: '0.2.5' })),
     runPnpmImpl: async ({ args }) => {
-      assert.deepEqual(args, ['view', 'dsh-file-viewer', 'version'])
-      return { output: '0.2.5\n' }
+      assert.deepEqual(args, ['config', 'get', 'registry'])
+      return { output: 'https://registry.npmjs.org/\n' }
     },
   })
   assert.equal(unchanged.upToDate, true)
@@ -796,15 +802,16 @@ test('does not downgrade a bundled npm plugin that is newer than the registry la
     dshHome,
     pnpmEntry: '/pnpm.mjs',
     name: 'dsh-file-viewer',
+    fetchImpl: async () => new Response(JSON.stringify({ version: '0.2.8' })),
     runPnpmImpl: async ({ args }) => {
       pnpmCalls.push(args)
-      assert.deepEqual(args, ['view', 'dsh-file-viewer', 'version'])
-      return { output: '0.2.8\n' }
+      assert.deepEqual(args, ['config', 'get', 'registry'])
+      return { output: 'https://registry.npmjs.org/\n' }
     },
   })
 
   assert.equal(catalog.upToDate, true)
-  assert.deepEqual(pnpmCalls, [['view', 'dsh-file-viewer', 'version']])
+  assert.deepEqual(pnpmCalls, [['config', 'get', 'registry']])
   assert.equal(catalog.plugins[0].requested, '0.3.0')
   assert.equal(catalog.plugins[0].version, '0.3.0')
 })

@@ -322,6 +322,7 @@ function installDesktopIpc() {
       pnpmEntry: resolvePnpmEntry(),
       execPath: process.execPath,
       env: harnessEnv,
+      fetchImpl: (url, options) => net.fetch(url, options),
       name,
       onOutput: writeLog,
       signal,

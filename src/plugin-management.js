@@ -17,6 +17,8 @@ export const MAX_PLUGIN_OUTPUT_LENGTH = 64 * 1024
 export const SYSTEM_BUNDLES = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
 const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
 const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
+const DEFAULT_NPM_REGISTRY = 'https://registry.npmjs.org/'
+const MAX_NPM_VERSION_RESPONSE_LENGTH = 64 * 1024
 
 export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.4.0'
 export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.3.0'
@@ -690,16 +692,34 @@ async function resolveGitHubDefaultCommit({ normalized, cwd, env, onOutput, sign
   throw new Error('Could not resolve the GitHub repository default branch')
 }
 
-function latestNpmVersionFromOutput(output) {
+function npmRegistryFromOutput(output) {
   for (const line of output.split(/\r?\n/).map(line => line.trim()).reverse()) {
-    if (semver.valid(line) !== null) return line
+    try {
+      const url = new URL(line)
+      if (url.protocol === 'https:' || url.protocol === 'http:') return url
+    } catch {
+      // pnpm can print warnings before the configured registry URL.
+    }
   }
-  throw new Error('Could not resolve the npm package latest version')
+  return new URL(DEFAULT_NPM_REGISTRY)
 }
 
-async function resolveLatestNpmVersion({ packageName, env, execPath, onOutput, pnpmEntry, profileDir, signal, runPnpmImpl }) {
-  const result = await runPnpmImpl({
-    args: ['view', packageName, 'version'],
+async function resolveLatestNpmVersion({
+  packageName,
+  env,
+  execPath,
+  fetchImpl,
+  onOutput,
+  pnpmEntry,
+  profileDir,
+  signal,
+  runPnpmImpl,
+}) {
+  // pnpm 9 forwards `view`/`info` to a separately installed npm executable.
+  // Finder-launched macOS apps do not have the user's shell PATH, so ask pnpm
+  // only for its registry setting and fetch the small `latest` document here.
+  const registryResult = await runPnpmImpl({
+    args: ['config', 'get', 'registry'],
     env,
     execPath,
     onOutput,
@@ -707,7 +727,26 @@ async function resolveLatestNpmVersion({ packageName, env, execPath, onOutput, p
     profileDir,
     signal,
   })
-  return latestNpmVersionFromOutput(result.output)
+  const registry = npmRegistryFromOutput(registryResult.output)
+  if (!registry.pathname.endsWith('/')) registry.pathname += '/'
+  const responseUrl = new URL(`${encodeURIComponent(packageName)}/latest`, registry)
+  const response = await fetchImpl(responseUrl, {
+    headers: { accept: 'application/json', 'user-agent': 'dsh-desktop-plugin-manager' },
+    redirect: 'error',
+    signal,
+  })
+  if (!response.ok) throw new Error(`npm registry request failed (${String(response.status)})`)
+  const contentLength = Number(response.headers?.get?.('content-length'))
+  if (Number.isFinite(contentLength) && contentLength > MAX_NPM_VERSION_RESPONSE_LENGTH) {
+    throw new Error('npm registry response is too large')
+  }
+  const text = await response.text()
+  if (Buffer.byteLength(text, 'utf8') > MAX_NPM_VERSION_RESPONSE_LENGTH) {
+    throw new Error('npm registry response is too large')
+  }
+  const version = semver.valid(JSON.parse(text)?.version)
+  if (version === null) throw new Error('Could not resolve the npm package latest version')
+  return version
 }
 
 function findInstalledPlugin(catalog, previous, normalized) {
@@ -898,6 +937,7 @@ export async function updatePlugin({
   onOutput,
   signal,
   profile = PLUGIN_PROFILE,
+  fetchImpl = globalThis.fetch,
   runGitImpl = runGit,
   runPnpmImpl = runPnpm,
 }) {
@@ -911,6 +951,7 @@ export async function updatePlugin({
       packageName: plugin.name,
       env,
       execPath,
+      fetchImpl,
       onOutput,
       pnpmEntry,
       profileDir: before.profileDir,
