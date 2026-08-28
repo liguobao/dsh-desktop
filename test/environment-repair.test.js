@@ -48,8 +48,8 @@ test('repairs the Desktop-owned Harness runtime environment from bundled sources
   const fileViewerPluginDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
   const logs = []
   writeDesktopPlugin(desktopPluginDir)
-  writeBundledPlugin(remotePluginDir, 'ds-harness-remote', '0.4.0')
-  writeBundledPlugin(fileViewerPluginDir, 'dsh-file-viewer', '0.3.0')
+  writeBundledPlugin(remotePluginDir, 'ds-harness-remote', '0.4.1')
+  writeBundledPlugin(fileViewerPluginDir, 'dsh-file-viewer', '0.3.1')
 
   const report = await repairDesktopEnvironment({
     dshHome,
@@ -92,8 +92,8 @@ test('reports a failed bundled repair step and continues with later steps', asyn
   const remotePluginDir = join(directory, 'app', 'node_modules', 'ds-harness-remote')
   const fileViewerPluginDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
   writeDesktopPlugin(desktopPluginDir)
-  writeBundledPlugin(remotePluginDir, 'wrong-remote-name', '0.4.0')
-  writeBundledPlugin(fileViewerPluginDir, 'dsh-file-viewer', '0.3.0')
+  writeBundledPlugin(remotePluginDir, 'wrong-remote-name', '0.4.1')
+  writeBundledPlugin(fileViewerPluginDir, 'dsh-file-viewer', '0.3.1')
 
   const report = await repairDesktopEnvironment({
     dshHome,

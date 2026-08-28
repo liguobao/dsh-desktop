@@ -20,8 +20,8 @@ const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 const DEFAULT_NPM_REGISTRY = 'https://registry.npmjs.org/'
 const MAX_NPM_VERSION_RESPONSE_LENGTH = 64 * 1024
 
-export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.4.0'
-export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.3.0'
+export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.4.1'
+export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.3.1'
 /** Optional online defaults. Desktop-bundled plugins are prepared locally before Harness starts. */
 export const DEFAULT_PLUGINS = []
 const DEFAULT_PLUGIN_SEEN_ALIASES = new Map([
@@ -29,6 +29,7 @@ const DEFAULT_PLUGIN_SEEN_ALIASES = new Map([
   ['npm:dsh-file-viewer', ['github:liguobao/dsh-file-viewer']],
 ])
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
+  '0.4.0',
   'github:liguobao/deepseek-harness-remote#3f8bd3b17f84fc6d8e04adabe2b078b1bbcd88e2',
   'github:liguobao/deepseek-harness-remote#v0.3.34',
   'github:liguobao/deepseek-harness-remote#3e96c7e9c36b05c39651669eb9d20fe6fb77ad4e',
@@ -57,6 +58,7 @@ const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   'github:liguobao/deepseek-harness-remote#da4beadabb57096a66b3ca790fd85a340a0ca899',
 ])
 const LEGACY_BUNDLED_FILE_VIEWER_SPECS = new Set([
+  '0.3.0',
   'github:liguobao/dsh-file-viewer#b28be6bad250a6bd52c81b3609faa88d2de10c39',
   'github:liguobao/dsh-file-viewer#v0.2.5',
   'github:liguobao/dsh-file-viewer#7fbfc7b8092c6ca1935b19b7563761a5600df522',
