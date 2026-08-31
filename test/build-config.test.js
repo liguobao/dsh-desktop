@@ -31,10 +31,29 @@ test('development and CI use Node.js 24', () => {
 })
 
 test('release builds bundle the prebuilt remote plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.1')
+  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.2')
   assert.equal(existsSync(new URL('../node_modules/ds-harness-remote/dist/index.js', import.meta.url)), true)
   const client = readFileSync(new URL('../node_modules/ds-harness-remote/dist/client.js', import.meta.url), 'utf8')
   assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"ds-harness-remote"/)
+})
+
+test('release builds use the published Harness alpha without vendored tarballs', () => {
+  const harnessVersion = '0.1.2-alpha.2'
+  assert.equal(packageJson.dependencies['@deepseek-ai/dsh'], harnessVersion)
+  assert.equal(packageJson.dependencies['@deepseek-ai/dsh-util-time'], harnessVersion)
+  assert.equal(packageLock.packages['node_modules/@deepseek-ai/dsh'].version, harnessVersion)
+  assert.equal(packageLock.packages['node_modules/@deepseek-ai/dsh-util-time'].version, harnessVersion)
+  assert.equal(
+    Object.entries({ ...packageJson.dependencies, ...packageJson.overrides })
+      .filter(([name]) => name === '@deepseek-ai/dsh' || name.startsWith('@deepseek-ai/dsh-'))
+      .every(([, specifier]) => specifier === harnessVersion),
+    true,
+  )
+  assert.equal(
+    Object.values({ ...packageJson.dependencies, ...packageJson.overrides })
+      .some(specifier => typeof specifier === 'string' && specifier.startsWith('file:vendor/deepseek-harness/')),
+    false,
+  )
 })
 
 test('release notes and download docs include the mirror and remote Android APK', () => {
@@ -43,6 +62,7 @@ test('release notes and download docs include the mirror and remote Android APK'
   assert.match(buildWorkflow, /dsh-remote-android-\$\{remote_tag\}\.apk/)
   assert.match(buildWorkflow, /remote_tag="v\$\{remote_spec\}"/)
   assert.match(buildWorkflow, /exact registry version/)
+  assert.match(buildWorkflow, /github\.com\/liguobao\/ds-harness-remote\/releases\/download/)
   assert.match(buildWorkflow, /Desktop installers and the bundled DSH Remote Android client/)
   assert.match(buildWorkflow, /桌面安装包和内置版本匹配的 DSH Remote Android 客户端已附在本 Release/)
   assert.equal(buildWorkflow.includes(mirror), true)

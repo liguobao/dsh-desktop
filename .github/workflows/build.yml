@@ -128,7 +128,7 @@ jobs:
       - name: Download bundled DSH Remote Android APK
         run: |
           remote_spec="$(node -p "require('./package.json').dependencies['ds-harness-remote']")"
-          if echo "$remote_spec" | grep -Eq '^github:liguobao/deepseek-harness-remote#v[0-9]+\.[0-9]+\.[0-9]+$'; then
+          if echo "$remote_spec" | grep -Eq '^github:liguobao/(ds-harness-remote|deepseek-harness-remote)#v[0-9]+\.[0-9]+\.[0-9]+$'; then
             remote_tag="${remote_spec##*#}"
           elif echo "$remote_spec" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             remote_tag="v${remote_spec}"
@@ -138,7 +138,7 @@ jobs:
           fi
           apk_name="dsh-remote-android-${remote_tag}.apk"
           curl --fail --location --retry 3 --output "release-assets/$apk_name" \
-            "https://github.com/liguobao/deepseek-harness-remote/releases/download/$remote_tag/$apk_name"
+            "https://github.com/liguobao/ds-harness-remote/releases/download/$remote_tag/$apk_name"
 
       - name: Ensure GitHub Release exists
         env:

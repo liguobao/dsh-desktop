@@ -4,7 +4,7 @@
     {
       "name": "ds-harness-remote",
       "owner": "liguobao",
-      "url": "https://github.com/liguobao/deepseek-harness-remote",
+      "url": "https://github.com/liguobao/ds-harness-remote",
       "category": "tools",
       "description": {
         "en": "Secure multi-device remote access for DeepSeek Harness: connect from your phone or browser to your local Harness over an end-to-end encrypted channel (Noise IK with a WebRTC-ready adaptive transport), with device authorization and Remote-gateway-backed capabilities, no shell or arbitrary file access.",
