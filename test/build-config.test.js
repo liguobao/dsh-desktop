@@ -37,12 +37,22 @@ test('release builds bundle the prebuilt remote plugin and its runtime dependenc
   assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"ds-harness-remote"/)
 })
 
-test('release builds use the published Harness alpha without vendored tarballs', () => {
-  const harnessVersion = '0.1.2-alpha.2'
+test('release builds use the published Harness release candidate without vendored tarballs', () => {
+  const harnessVersion = '0.1.2-rc.1'
   assert.equal(packageJson.dependencies['@deepseek-ai/dsh'], harnessVersion)
   assert.equal(packageJson.dependencies['@deepseek-ai/dsh-util-time'], harnessVersion)
   assert.equal(packageLock.packages['node_modules/@deepseek-ai/dsh'].version, harnessVersion)
   assert.equal(packageLock.packages['node_modules/@deepseek-ai/dsh-util-time'].version, harnessVersion)
+  assert.equal(packageJson.overrides['@deepseek-ai/dsh-session-turn-outline'], harnessVersion)
+  for (const removedPackage of [
+    '@deepseek-ai/dsh-agent-spine-demo',
+    '@deepseek-ai/dsh-code-runtime-python',
+    '@deepseek-ai/dsh-session-persistence-sqlite',
+    '@deepseek-ai/dsh-tool-subagent-report',
+  ]) {
+    assert.equal(packageJson.overrides[removedPackage], undefined)
+    assert.equal(packageLock.packages[`node_modules/${removedPackage}`], undefined)
+  }
   assert.equal(
     Object.entries({ ...packageJson.dependencies, ...packageJson.overrides })
       .filter(([name]) => name === '@deepseek-ai/dsh' || name.startsWith('@deepseek-ai/dsh-'))
