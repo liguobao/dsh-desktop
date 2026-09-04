@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import process from 'node:process'
-import { app, BrowserWindow, Menu, dialog, ipcMain, net, shell } from 'electron'
+import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, net, shell } from 'electron'
 import { createInstallerUpdateController } from './auto-update.js'
 import {
   authorizeWorkspacePath,
@@ -34,6 +34,7 @@ import {
   updatePlugin as updateProfilePlugin,
 } from './plugin-management.js'
 import { loadingStateScript, normalizeProgress } from './startup-progress.js'
+import { createCloseToTrayHandler, supportsCloseToTray, trayMenuTemplate } from './window-lifecycle.js'
 
 const require = createRequire(import.meta.url)
 const PROJECT_URL = 'https://github.com/liguobao/dsh-desktop'
@@ -116,6 +117,7 @@ let mainWindow
 let splashWindow
 let pluginWindow
 let aboutWindow
+let tray
 let server
 let harnessOrigin
 let quitting = false
@@ -566,10 +568,50 @@ async function updateLoading(message, progress, stage, generation = restartGener
 
 function revealMainWindow() {
   if (mainWindow?.isDestroyed() !== false) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
   mainWindow.show()
+  mainWindow.focus()
   const splash = splashWindow
   splashWindow = undefined
   if (splash?.isDestroyed() === false) splash.close()
+}
+
+function showMainWindow() {
+  if (quitting) return
+  if (mainWindow?.isDestroyed() === false) {
+    revealMainWindow()
+    return
+  }
+  if (splashWindow?.isDestroyed() === false) {
+    splashWindow.show()
+    splashWindow.focus()
+    return
+  }
+  splashWindow = createSplashWindow()
+  void startHarness()
+}
+
+function hideMainWindowToTray(window) {
+  window.hide()
+  if (pluginWindow?.isDestroyed() === false) pluginWindow.close()
+  if (aboutWindow?.isDestroyed() === false) aboutWindow.close()
+}
+
+function createApplicationTray() {
+  if (!supportsCloseToTray(process.platform) || tray !== undefined) return
+  let icon = nativeImage.createFromPath(join(import.meta.dirname, '..', 'assets', 'icon.png'))
+  if (process.platform === 'darwin') {
+    icon = icon.resize({ width: 18, height: 18 })
+    icon.setTemplateImage(true)
+  }
+  tray = new Tray(icon)
+  tray.setToolTip('DSH Desktop')
+  tray.setContextMenu(Menu.buildFromTemplate(trayMenuTemplate({
+    isChinese,
+    showWindow: showMainWindow,
+    quitApp: () => app.quit(),
+  })))
+  tray.on('click', showMainWindow)
 }
 
 async function showError(title, error) {
@@ -635,6 +677,11 @@ function createWindow() {
     },
   })
   installNavigationPolicy(window)
+  window.on('close', createCloseToTrayHandler({
+    platform: process.platform,
+    isQuitting: () => quitting,
+    hideWindow: () => hideMainWindowToTray(window),
+  }))
   window.webContents.on('render-process-gone', (_event, details) => {
     if (quitting || window !== mainWindow || isDesktopPage(window.webContents.getURL())) return
     const detail = `Reason: ${details.reason}, exit code: ${String(details.exitCode)}`
@@ -964,15 +1011,13 @@ if (!hasLock) {
   app.quit()
 } else {
   app.on('second-instance', () => {
-    if (mainWindow === undefined) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.show()
-    mainWindow.focus()
+    showMainWindow()
   })
 
   app.whenReady().then(async () => {
     app.setName('DSH Desktop')
     setLocale(app.getLocale())
+    createApplicationTray()
     const logsDirectory = join(app.getPath('userData'), 'logs')
     mkdirSync(logsDirectory, { recursive: true })
     logPath = join(logsDirectory, 'desktop.log')
@@ -1032,10 +1077,7 @@ if (!hasLock) {
   })
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      splashWindow = createSplashWindow()
-      void startHarness()
-    }
+    showMainWindow()
   })
 
   app.on('before-quit', (event) => {
@@ -1054,6 +1096,6 @@ if (!hasLock) {
   })
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+    if (!supportsCloseToTray(process.platform)) app.quit()
   })
 }
