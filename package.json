@@ -64,7 +64,7 @@
     "yaml": "2.9.0"
   },
   "devDependencies": {
-    "electron": "44.0.0",
+    "electron": "44.1.1",
     "electron-builder": "26.15.3",
     "patch-package": "8.0.1"
   },
