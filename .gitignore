@@ -1,4 +1,5 @@
 node_modules/
+.npm-cache/
 dist/
 .playwright-cli/
 *.log
