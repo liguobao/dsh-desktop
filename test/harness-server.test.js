@@ -62,9 +62,47 @@ test('rejects when the child exits before readiness', async () => {
     spawnImpl: () => child,
   })
   const ready = server.start()
+  child.stdout.write('booting profile\n')
+  child.stderr.write('Error: cannot resolve bundle with token=abc_DEF-123 and apiKey: shh\n')
   child.exitCode = 1
   child.emit('exit', 1, null)
-  await assert.rejects(ready, /exited before it was ready/)
+  await assert.rejects(ready, (error) => {
+    assert.match(error.message, /exited before it was ready/)
+    assert.match(error.message, /Recent Harness output:/)
+    assert.match(error.message, /\[stdout\] booting profile/)
+    assert.match(error.message, /\[stderr\] Error: cannot resolve bundle with token=\[REDACTED\] and apiKey: \[REDACTED\]/)
+    assert.doesNotMatch(error.message, /abc_DEF-123|shh/)
+    return true
+  })
+})
+
+test('spawns Harness with explicit argv and a GUI-style PATH', async () => {
+  const child = fakeChild()
+  const args = ['--require', '/app/parent-watch.cjs', '/app/dsh/bin.js', 'web']
+  let invocation
+  const server = new HarnessServer({
+    command: '/Applications/DSH Desktop.app/Contents/MacOS/DSH Desktop',
+    args,
+    cwd: '/Users/test',
+    env: {
+      ELECTRON_RUN_AS_NODE: '1',
+      PATH: '/usr/bin:/bin',
+    },
+    spawnImpl: (command, spawnArgs, options) => {
+      invocation = { command, args: spawnArgs, options }
+      return child
+    },
+  })
+  const ready = server.start()
+  child.stdout.write('dsh web: http://127.0.0.1:45678/?token=abc_DEF-123\n')
+
+  assert.equal(await ready, 'http://127.0.0.1:45678/?token=abc_DEF-123')
+  assert.equal(invocation.command, '/Applications/DSH Desktop.app/Contents/MacOS/DSH Desktop')
+  assert.deepEqual(invocation.args, args)
+  assert.equal(invocation.options.cwd, '/Users/test')
+  assert.equal(invocation.options.env.PATH, '/usr/bin:/bin')
+  assert.equal(invocation.options.env.ELECTRON_RUN_AS_NODE, '1')
+  assert.equal(invocation.options.shell, false)
 })
 
 test('sends a graceful tree signal during stop', async () => {

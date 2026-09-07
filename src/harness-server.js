@@ -3,6 +3,37 @@ import process from 'node:process'
 import { spawn as nodeSpawn } from 'node:child_process'
 
 const READY_URL = /(?:^|\n)dsh web:\s+(http:\/\/127\.0\.0\.1:\d+(?:\/[^\s]*)?)(?:\s|$)/
+const DIAGNOSTIC_OUTPUT_MAX_LINES = 60
+const DIAGNOSTIC_OUTPUT_MAX_CHARS = 6_000
+
+function redactDiagnosticOutput(text) {
+  return text
+    .replaceAll(/(token=)[A-Za-z0-9_-]+/g, '$1[REDACTED]')
+    .replaceAll(/(authorization:\s*bearer\s+)[^\s]+/gi, '$1[REDACTED]')
+    .replaceAll(/((?:api[_-]?key|apikey|access[_-]?token|secret|password)["']?\s*[:=]\s*["']?)[^"',\s]+/gi, '$1[REDACTED]')
+}
+
+function formatDiagnosticOutput(lines, pending) {
+  const output = [
+    ...lines,
+    ...Object.entries(pending)
+      .filter(([, line]) => line !== '')
+      .map(([source, line]) => `[${source}] ${line}`),
+  ]
+  if (output.length === 0) return ''
+
+  const clippedByLine = output.length > DIAGNOSTIC_OUTPUT_MAX_LINES
+  let text = output.slice(-DIAGNOSTIC_OUTPUT_MAX_LINES).join('\n')
+  const clippedByChar = text.length > DIAGNOSTIC_OUTPUT_MAX_CHARS
+  if (clippedByChar) text = text.slice(-DIAGNOSTIC_OUTPUT_MAX_CHARS)
+  return `${clippedByLine || clippedByChar ? '[output truncated]\n' : ''}${redactDiagnosticOutput(text)}`
+}
+
+function startupExitError({ code, signal, diagnostic }) {
+  const reason = `DeepSeek Harness exited before it was ready (code: ${String(code)}, signal: ${String(signal)}).`
+  if (diagnostic === '') return new Error(reason)
+  return new Error(`${reason}\n\nRecent Harness output:\n${diagnostic}`)
+}
 
 /** Build the DSH Web invocation used by the embedded desktop server. */
 export function buildHarnessArgs({ entry, parentWatch, patch }) {
@@ -85,6 +116,8 @@ export class HarnessServer extends EventEmitter {
     this.startPromise = undefined
     this.stopPromise = undefined
     this.output = ''
+    this.diagnosticLines = []
+    this.diagnosticPending = { stdout: '', stderr: '' }
     this.url = undefined
   }
 
@@ -111,6 +144,7 @@ export class HarnessServer extends EventEmitter {
       detached: process.platform !== 'win32',
       // Keeping stdin as an otherwise-unused pipe lets the child detect a
       // crashed desktop parent (see parent-watch.cjs).
+      shell: false,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     })
@@ -129,6 +163,7 @@ export class HarnessServer extends EventEmitter {
         const text = String(chunk)
         onOutput(source, text)
         this.output = `${this.output}${text}`.slice(-16_384)
+        this.recordDiagnosticOutput(source, text)
         const match = this.output.match(READY_URL)
         if (match?.[1] !== undefined) {
           this.url = match[1]
@@ -143,13 +178,27 @@ export class HarnessServer extends EventEmitter {
       child.once('error', error => finish(new Error(`Unable to start DeepSeek Harness: ${error.message}`, { cause: error })))
       child.once('exit', (code, signal) => {
         this.emit('exit', { code, signal, ready: this.url !== undefined })
-        finish(new Error(`DeepSeek Harness exited before it was ready (code: ${String(code)}, signal: ${String(signal)}).`))
+        finish(startupExitError({ code, signal, diagnostic: this.diagnosticOutput() }))
       })
 
       const timeout = setTimeout(() => {
         finish(new Error(`DeepSeek Harness did not become ready within ${Math.round(startupTimeoutMs / 1000)} seconds.`))
       }, startupTimeoutMs)
     })
+  }
+
+  recordDiagnosticOutput(source, text) {
+    const combined = `${this.diagnosticPending[source]}${text}`.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+    const lines = combined.split('\n')
+    this.diagnosticPending[source] = lines.pop() ?? ''
+    for (const line of lines) this.diagnosticLines.push(`[${source}] ${line}`)
+    if (this.diagnosticLines.length > DIAGNOSTIC_OUTPUT_MAX_LINES * 2) {
+      this.diagnosticLines = this.diagnosticLines.slice(-DIAGNOSTIC_OUTPUT_MAX_LINES)
+    }
+  }
+
+  diagnosticOutput() {
+    return formatDiagnosticOutput(this.diagnosticLines, this.diagnosticPending)
   }
 
   stop() {

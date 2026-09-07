@@ -301,12 +301,16 @@ export async function installBundledPlugin({
   ))
   for (const legacyPackageName of legacyPackageSet) {
     const declaredSpec = profileManifest.dependencies?.[legacyPackageName]
-    if (typeof declaredSpec !== 'string' || !legacySpecs.has(declaredSpec)) continue
-    delete profileManifest.dependencies[legacyPackageName]
     const bundles = Array.isArray(profileManifest.dsh?.profile?.bundles) ? profileManifest.dsh.profile.bundles : []
-    profileManifest.dsh = {
-      ...profileManifest.dsh,
-      profile: { ...profileManifest.dsh?.profile, bundles: bundles.filter(name => name !== legacyPackageName) },
+    const bundled = bundles.includes(legacyPackageName)
+    const installed = existsSync(join(profileDir, 'node_modules', ...legacyPackageName.split('/'), 'package.json'))
+    if (typeof declaredSpec !== 'string' && !bundled && !installed) continue
+    if (profileManifest.dependencies !== undefined) delete profileManifest.dependencies[legacyPackageName]
+    if (bundled) {
+      profileManifest.dsh = {
+        ...profileManifest.dsh,
+        profile: { ...profileManifest.dsh?.profile, bundles: bundles.filter(name => name !== legacyPackageName) },
+      }
     }
     await rm(join(profileDir, 'node_modules', ...legacyPackageName.split('/')), { recursive: true, force: true })
   }

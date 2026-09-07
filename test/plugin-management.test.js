@@ -339,6 +339,39 @@ test('upgrades the previous bundled remote release without overwriting online up
   assert.equal(nextManifest.dsh.profile.bundles.includes('dsh-remote'), false)
 })
 
+test('removes stale legacy remote package names even when their spec is unknown', async (t) => {
+  const directory = temporaryDirectory(t)
+  const dshHome = join(directory, 'dsh-home')
+  const profileDir = join(dshHome, 'profiles', 'web')
+  const sourceDir = join(directory, 'app', 'node_modules', 'ds-harness-remote')
+  ensureProfileInitialized(dshHome)
+  const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+  profileManifest.dependencies['dsh-remote'] = 'github:liguobao/deepseek-harness-remote#v0.3.35'
+  profileManifest.dsh.profile.bundles.push('dsh-remote')
+  writeJson(join(profileDir, 'package.json'), profileManifest)
+  writeJson(join(profileDir, 'node_modules', 'dsh-remote', 'package.json'), {
+    name: 'dsh-remote', version: '0.3.35', dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(profileDir, 'pnpm-lock.yaml'), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      dsh-remote:\n        specifier: github:liguobao/deepseek-harness-remote#v0.3.35\n        version: https://codeload.github.com/liguobao/deepseek-harness-remote/tar.gz/v0.3.35\n`)
+  writeJson(join(sourceDir, 'package.json'), {
+    name: 'ds-harness-remote', version: '0.4.10', dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(sourceDir, 'fixed.js'), 'fixed\n')
+
+  await installBundledRemotePlugin({ dshHome, sourceDir })
+
+  assert.equal(existsSync(join(profileDir, 'node_modules', 'dsh-remote')), false)
+  assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'fixed.js'), 'utf8'), 'fixed\n')
+  const nextManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+  assert.equal(nextManifest.dependencies['dsh-remote'], undefined)
+  assert.equal(nextManifest.dependencies['ds-harness-remote'], '0.4.10')
+  assert.equal(nextManifest.dsh.profile.bundles.includes('dsh-remote'), false)
+  assert.equal(nextManifest.dsh.profile.bundles.includes('ds-harness-remote'), true)
+  const lockfile = readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8')
+  assert.doesNotMatch(lockfile, /dsh-remote:/)
+  assert.match(lockfile, /ds-harness-remote:/)
+})
+
 test('accepts GitHub repository addresses with optional revisions', () => {
   assert.deepEqual(normalizePluginSpec('https://github.com/liguobao/deepseek-harness-remote'), {
     spec: 'github:liguobao/deepseek-harness-remote',
