@@ -322,7 +322,7 @@ test('upgrades the previous bundled remote release without overwriting online up
   })
   writeFileSync(join(profileDir, 'node_modules', 'dsh-remote', 'old.js'), 'broken\n')
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'ds-harness-remote', version: '0.4.9', dsh: { bundle: { patch: './cordis.patch.yml' } },
+    name: 'ds-harness-remote', version: '0.4.10', dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'fixed.js'), 'fixed\n')
 
@@ -332,8 +332,8 @@ test('upgrades the previous bundled remote release without overwriting online up
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'ds-harness-remote', 'fixed.js'), 'utf8'), 'fixed\n')
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
   assert.equal(plugin.name, 'ds-harness-remote')
-  assert.equal(plugin.requested, '0.4.9')
-  assert.equal(plugin.version, '0.4.9')
+  assert.equal(plugin.requested, '0.4.10')
+  assert.equal(plugin.version, '0.4.10')
   const nextManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
   assert.equal(nextManifest.dependencies['dsh-remote'], undefined)
   assert.equal(nextManifest.dsh.profile.bundles.includes('dsh-remote'), false)
