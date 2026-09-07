@@ -114,7 +114,7 @@ test('seeds the bundled remote plugin when an older release marked the default a
     seen: ['github:liguobao/deepseek-harness-remote'],
   })
   writeJson(join(sourceDir, 'package.json'), {
-    name: 'ds-harness-remote', version: '0.4.9',
+    name: 'ds-harness-remote', version: '0.4.10',
     dsh: { bundle: { patch: './cordis.patch.yml' } },
   })
   writeFileSync(join(sourceDir, 'index.js'), 'export {}\n')
