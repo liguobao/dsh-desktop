@@ -134,6 +134,7 @@ test('launches editors with argv and never through a shell', async () => {
   assert.deepEqual(invocation.args, ['/workspace/a file.ts'])
   assert.equal(invocation.options.shell, undefined)
   assert.equal(invocation.options.detached, true)
+  assert.equal(invocation.options.windowsHide, true)
   assert.equal(unrefCalled, true)
 })
 

@@ -258,7 +258,7 @@ export function launchEditor(editor, path, spawnImpl = nodeSpawn) {
     const child = spawnImpl(editor.command, [path], {
       detached: true,
       stdio: 'ignore',
-      windowsHide: false,
+      windowsHide: true,
     })
     child.once('error', reject)
     child.once('spawn', () => {

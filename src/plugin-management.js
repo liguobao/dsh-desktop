@@ -20,7 +20,7 @@ const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
 const DEFAULT_NPM_REGISTRY = 'https://registry.npmjs.org/'
 const MAX_NPM_VERSION_RESPONSE_LENGTH = 64 * 1024
 
-export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.4.9'
+export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.4.10'
 export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.3.1'
 /** Optional online defaults. Desktop-bundled plugins are prepared locally before Harness starts. */
 export const DEFAULT_PLUGINS = []
