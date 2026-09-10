@@ -6,7 +6,6 @@ import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import test from 'node:test'
 import {
-  BUNDLED_FILE_VIEWER_SPEC,
   DEFAULT_PLUGINS,
   ensureDefaultPlugins,
   ensureProfileInitialized,
@@ -26,7 +25,6 @@ const mainUrl = new URL('../src/main.js', import.meta.url)
 const serviceUrl = new URL('../src/plugin-management.js', import.meta.url)
 const preloadUrl = new URL('../src/plugin-preload.cjs', import.meta.url)
 const pageUrl = new URL('../src/pages/plugins.html', import.meta.url)
-const bundledFileViewerLockVersion = 'https://codeload.github.com/liguobao/dsh-file-viewer/tar.gz/4776d1069774175002cd6156d833494fed2f1b75'
 
 function temporaryDirectory(t) {
   const directory = mkdtempSync(join(tmpdir(), 'dsh-plugin-manager-test-'))
@@ -158,7 +156,7 @@ test('upgrades an older exact bundled remote version from the desktop bundle', a
   assert.equal(readFileSync(join(targetDir, 'index.js'), 'utf8'), 'new\n')
 })
 
-test('seeds the bundled file viewer with its runtime dependency closure and a GitHub source', async (t) => {
+test('seeds the bundled file viewer with its runtime dependency closure and a registry source', async (t) => {
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
   const sourceDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
@@ -178,16 +176,13 @@ test('seeds the bundled file viewer with its runtime dependency closure and a Gi
   const profileDir = join(dshHome, 'profiles', 'web')
   const catalog = readPluginCatalog({ dshHome })
   assert.equal(catalog.plugins[0].name, 'dsh-file-viewer')
-  assert.equal(catalog.plugins[0].source, 'github')
+  assert.equal(catalog.plugins[0].source, 'npm')
   assert.equal(catalog.plugins[0].version, '0.3.5')
   assert.equal(catalog.plugins[0].enabled, true)
   assert.equal(readFileSync(join(profileDir, 'node_modules', 'dsh-file-viewer', 'index.js'), 'utf8'), 'export {}\n')
   assert.equal(JSON.parse(readFileSync(join(profileDir, 'node_modules', 'markdown-it', 'package.json'))).version, '14.1.0')
-  assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], BUNDLED_FILE_VIEWER_SPEC)
-  assert.match(
-    readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'),
-    new RegExp(`version: ${bundledFileViewerLockVersion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
-  )
+  assert.equal(JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'], '0.3.5')
+  assert.match(readFileSync(join(profileDir, 'pnpm-lock.yaml'), 'utf8'), /version: 0\.3\.5/)
 })
 
 test('upgrades an older exact bundled file viewer version from the desktop bundle', async (t) => {
@@ -212,14 +207,14 @@ test('upgrades an older exact bundled file viewer version from the desktop bundl
   await installBundledFileViewerPlugin({ dshHome, sourceDir })
 
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, BUNDLED_FILE_VIEWER_SPEC)
-  assert.equal(plugin.source, 'github')
+  assert.equal(plugin.requested, '0.3.5')
+  assert.equal(plugin.source, 'npm')
   assert.equal(plugin.version, '0.3.5')
   assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
   assert.equal(readFileSync(join(targetDir, 'index.js'), 'utf8'), 'new\n')
 })
 
-test('upgrades the npm file viewer bundle to the current bundled release', async (t) => {
+test('upgrades the npm file viewer bundle to the current registry release', async (t) => {
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
   const profileDir = ensureProfileInitialized(dshHome)
@@ -241,8 +236,8 @@ test('upgrades the npm file viewer bundle to the current bundled release', async
   await installBundledFileViewerPlugin({ dshHome, sourceDir })
 
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, BUNDLED_FILE_VIEWER_SPEC)
-  assert.equal(plugin.source, 'github')
+  assert.equal(plugin.requested, '0.3.5')
+  assert.equal(plugin.source, 'npm')
   assert.equal(plugin.version, '0.3.5')
   assert.equal(plugin.enabled, true)
   assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
@@ -271,7 +266,7 @@ test('upgrades a previous bundled GitHub file viewer release', async (t) => {
   await installBundledFileViewerPlugin({ dshHome, sourceDir })
 
   const plugin = readPluginCatalog({ dshHome }).plugins[0]
-  assert.equal(plugin.requested, BUNDLED_FILE_VIEWER_SPEC)
+  assert.equal(plugin.requested, '0.3.5')
   assert.equal(plugin.version, '0.3.5')
   assert.equal(plugin.enabled, true)
   assert.equal(existsSync(join(targetDir, 'legacy.js')), false)
@@ -308,7 +303,7 @@ test('repairs a bundled file viewer whose ignored prepare script left its dist m
   assert.equal(existsSync(join(targetDir, 'incomplete.js')), false)
   assert.equal(
     JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')).dependencies['dsh-file-viewer'],
-    BUNDLED_FILE_VIEWER_SPEC,
+    '0.3.5',
   )
 })
 

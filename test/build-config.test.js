@@ -9,7 +9,6 @@ const buildWorkflow = readFileSync(new URL('../.github/workflows/build.yml', imp
 const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
 const readmeZh = readFileSync(new URL('../README.zh-CN.md', import.meta.url), 'utf8')
 const nodeVersion = readFileSync(new URL('../.node-version', import.meta.url), 'utf8').trim()
-const bundledFileViewerSpec = 'github:liguobao/dsh-file-viewer#4776d1069774175002cd6156d833494fed2f1b75'
 
 test('Windows build produces installer and portable packages', () => {
   assert.deepEqual(packageJson.build.win.target, ['nsis', 'portable'])
@@ -89,7 +88,7 @@ test('release notes and download docs include the mirror and remote Android APK'
 })
 
 test('release builds bundle the prebuilt file viewer plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['dsh-file-viewer'], bundledFileViewerSpec)
+  assert.equal(packageJson.dependencies['dsh-file-viewer'], '0.3.5')
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/index.js', import.meta.url)), true)
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/client.js', import.meta.url)), true)
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/cordis.patch.yml', import.meta.url)), true)

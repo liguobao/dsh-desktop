@@ -21,7 +21,7 @@ const DEFAULT_NPM_REGISTRY = 'https://registry.npmjs.org/'
 const MAX_NPM_VERSION_RESPONSE_LENGTH = 64 * 1024
 
 export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.4.13'
-export const BUNDLED_FILE_VIEWER_SPEC = 'github:liguobao/dsh-file-viewer#4776d1069774175002cd6156d833494fed2f1b75'
+export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.3.5'
 /** Optional online defaults. Desktop-bundled plugins are prepared locally before Harness starts. */
 export const DEFAULT_PLUGINS = []
 const DEFAULT_PLUGIN_SEEN_ALIASES = new Map([
