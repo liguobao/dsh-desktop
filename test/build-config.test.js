@@ -31,7 +31,7 @@ test('development and CI use Node.js 24', () => {
 })
 
 test('release builds bundle the prebuilt remote plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.21')
+  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.13')
   assert.equal(existsSync(new URL('../node_modules/ds-harness-remote/dist/index.js', import.meta.url)), true)
   const host = readFileSync(new URL('../node_modules/ds-harness-remote/dist/index.js', import.meta.url), 'utf8')
   assert.match(host, /webServer\.register/)
