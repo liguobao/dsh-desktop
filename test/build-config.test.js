@@ -31,8 +31,11 @@ test('development and CI use Node.js 24', () => {
 })
 
 test('release builds bundle the prebuilt remote plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.10')
+  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.13')
   assert.equal(existsSync(new URL('../node_modules/ds-harness-remote/dist/index.js', import.meta.url)), true)
+  const host = readFileSync(new URL('../node_modules/ds-harness-remote/dist/index.js', import.meta.url), 'utf8')
+  assert.match(host, /webServer\.register/)
+  assert.match(host, /requestRejection/)
   const client = readFileSync(new URL('../node_modules/ds-harness-remote/dist/client.js', import.meta.url), 'utf8')
   assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"ds-harness-remote"/)
 })
@@ -85,12 +88,14 @@ test('release notes and download docs include the mirror and remote Android APK'
 })
 
 test('release builds bundle the prebuilt file viewer plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['dsh-file-viewer'], '0.3.1')
+  assert.equal(packageJson.dependencies['dsh-file-viewer'], '0.3.5')
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/index.js', import.meta.url)), true)
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/client.js', import.meta.url)), true)
   assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/cordis.patch.yml', import.meta.url)), true)
   const manifest = JSON.parse(readFileSync(new URL('../node_modules/dsh-file-viewer/package.json', import.meta.url), 'utf8'))
-  assert.equal(manifest.version, '0.3.1')
+  assert.equal(manifest.version, '0.3.5')
+  const bundle = readFileSync(new URL('../node_modules/dsh-file-viewer/dist/index.js', import.meta.url), 'utf8')
+  assert.match(bundle, /ctx\.inject\(\["connection", "webServer"\]/)
   const harnessVersion = packageLock.packages['node_modules/@deepseek-ai/dsh'].version
   for (const peer of ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-host-apiproxy']) {
     assert.equal(semver.satisfies(harnessVersion, manifest.peerDependencies[peer], { includePrerelease: true }), true)
