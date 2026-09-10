@@ -1,0 +1,22 @@
+diff --git a/node_modules/@deepseek-ai/dsh-win32-process/lib/index.js b/node_modules/@deepseek-ai/dsh-win32-process/lib/index.js
+index 697e5e4..4a1a80b 100644
+--- a/node_modules/@deepseek-ai/dsh-win32-process/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-win32-process/lib/index.js
+@@ -3,6 +3,8 @@ import koffi from "koffi";
+ const ERROR_INSUFFICIENT_BUFFER = 122;
+ /** Job limit that terminates every member when the final Job handle closes. */
+ const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 8192;
++/** Process creation flag that prevents a sandboxed console process from opening a window. */
++const CREATE_NO_WINDOW = 0x08000000;
+ //#endregion
+ //#region lib/types/errors.js
+ /** Win32 call failure with the exact API name and error code. */
+@@ -601,7 +603,7 @@ function spawnJobProcess(api, options, resolveStdio, createName, create) {
+ */
+ function spawnInheritedJobProcess(api, options) {
+ 	const commandLine = buildCommandLine(options.command, options.args);
+-	return spawnJobProcess(api, options, () => inheritedStandardHandles(api), "CreateProcessAsUserW", (startupInfo, processInfo) => createRestrictedProcess(api, options, commandLine, 4, startupInfo, processInfo));
++	return spawnJobProcess(api, options, () => inheritedStandardHandles(api), "CreateProcessAsUserW", (startupInfo, processInfo) => createRestrictedProcess(api, options, commandLine, 4 | CREATE_NO_WINDOW, startupInfo, processInfo));
+ }
+ /**
+ * Spawn an ordinary process suspended, assign its Job, then resume it.
