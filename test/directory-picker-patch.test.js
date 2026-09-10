@@ -11,7 +11,8 @@ test('Windows directory picker avoids Electron-incompatible external buffers', (
   const workerSource = readFileSync(workerPath, 'utf8')
 
   assert.doesNotMatch(workerSource, /Buffer\.from\(koffi\.view\(/)
-  assert.match(workerSource, /koffi\.decode\.string16\(address\)/)
+  assert.match(workerSource, /pointer\.writeBigUInt64LE\(BigInt\(address\)\)/)
+  assert.match(workerSource, /koffi\.decode\(pointer\.subarray\(0, pointerSize\), "str16"\)/)
 })
 
 test('Koffi decodes UTF-16 pointers inside Electron run-as-node', () => {

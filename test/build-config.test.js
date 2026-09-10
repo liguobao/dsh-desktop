@@ -38,7 +38,7 @@ test('release builds bundle the prebuilt remote plugin and its runtime dependenc
 })
 
 test('release builds use the published Harness release candidate without vendored tarballs', () => {
-  const harnessVersion = '0.1.2-rc.1'
+  const harnessVersion = '0.1.5-rc.1'
   assert.equal(packageJson.dependencies['@deepseek-ai/dsh'], harnessVersion)
   assert.equal(packageJson.dependencies['@deepseek-ai/dsh-util-time'], harnessVersion)
   assert.equal(packageLock.packages['node_modules/@deepseek-ai/dsh'].version, harnessVersion)
@@ -93,7 +93,7 @@ test('release builds bundle the prebuilt file viewer plugin and its runtime depe
   assert.equal(manifest.version, '0.3.1')
   const harnessVersion = packageLock.packages['node_modules/@deepseek-ai/dsh'].version
   for (const peer of ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-host-apiproxy']) {
-    assert.equal(semver.satisfies(harnessVersion, manifest.peerDependencies[peer]), true)
+    assert.equal(semver.satisfies(harnessVersion, manifest.peerDependencies[peer], { includePrerelease: true }), true)
     assert.equal(manifest.peerDependenciesMeta[peer].optional, true)
   }
 })
