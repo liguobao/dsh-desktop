@@ -58,7 +58,7 @@
     "@deepseek-ai/dsh-util-workspace-path": "0.1.5-rc.1",
     "@deepseek-ai/dsh-workflow": "0.1.5-rc.1",
     "ds-harness-remote": "0.4.13",
-    "dsh-file-viewer": "0.3.5",
+    "dsh-file-viewer": "github:liguobao/dsh-file-viewer#4776d1069774175002cd6156d833494fed2f1b75",
     "pnpm": "11.24.0",
     "semver": "7.8.5",
     "yaml": "2.9.0"
