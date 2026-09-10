@@ -1,0 +1,12 @@
+diff --git a/node_modules/@deepseek-ai/dsh-subprocess-local/lib/index.js b/node_modules/@deepseek-ai/dsh-subprocess-local/lib/index.js
+index 8e1b9f9..2c6382b 100644
+--- a/node_modules/@deepseek-ai/dsh-subprocess-local/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-subprocess-local/lib/index.js
+@@ -503,6 +503,7 @@ function launchWindowsJob(spec, targetEnv, internals = {}) {
+ 		], {
+ 			cwd: process.cwd(),
+ 			env: runnerEnvironment(WINDOWS_RUNNER_SELECTION, invocation),
++			windowsHide: true,
+ 			stdio: runnerStdio(spec, true, ignoredStdinFd ?? "pipe")
+ 		});
+ 	} finally {

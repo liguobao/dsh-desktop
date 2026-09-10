@@ -1,0 +1,16 @@
+diff --git a/node_modules/@deepseek-ai/dsh-win32-process/lib/index.js b/node_modules/@deepseek-ai/dsh-win32-process/lib/index.js
+index 697e5e4..dd6e77a 100644
+--- a/node_modules/@deepseek-ai/dsh-win32-process/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-win32-process/lib/index.js
+@@ -612,7 +612,10 @@ function spawnInheritedJobProcess(api, options) {
+ function spawnCurrentTokenJobProcess(api, options) {
+ 	const commandLine = buildCommandLine(options.command, options.args);
+ 	const environment = encodeWindowsEnvironment(options.env);
+-	return spawnJobProcess(api, options, () => targetCarrierHandles(api, options.stdio), "CreateProcessW", (startupInfo, processInfo) => api.createProcessW(options.applicationName, commandLine, null, null, 1, 1028, environment, options.cwd, startupInfo, processInfo));
++	// Ordinary managed commands use redirected stdio, not a console window.
++	const CREATE_NO_WINDOW = 0x08000000;
++	const creationFlags = 1028 | CREATE_NO_WINDOW;
++	return spawnJobProcess(api, options, () => targetCarrierHandles(api, options.stdio), "CreateProcessW", (startupInfo, processInfo) => api.createProcessW(options.applicationName, commandLine, null, null, 1, creationFlags, environment, options.cwd, startupInfo, processInfo));
+ }
+ /**
+ * Verify that an unnamed kill-on-close Job can be created and released now.
