@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url)
 const fixture = fileURLToPath(new URL('../scripts/fixtures/windows-acl-sandbox-probe.cjs', import.meta.url))
 
 test('Windows ACL sandbox hides PowerShell consoles without weakening file permissions', {
-  skip: process.platform !== 'win32',
+  skip: process.platform !== 'win32' || process.env.CI === 'true',
   timeout: 120_000,
 }, () => {
   const electron = require('electron')

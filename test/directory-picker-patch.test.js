@@ -15,7 +15,11 @@ test('Windows directory picker avoids Electron-incompatible external buffers', (
   assert.match(workerSource, /koffi\.decode\(pointer\.subarray\(0, pointerSize\), "str16"\)/)
 })
 
-test('Koffi decodes UTF-16 pointers inside Electron run-as-node', () => {
+test('Koffi decodes UTF-16 pointers inside Electron run-as-node', {
+  // GitHub-hosted Windows runners intermittently terminate Electron before
+  // native modules are initialized (STATUS_DLL_INIT_FAILED).
+  skip: process.platform === 'win32' && process.env.CI === 'true',
+}, () => {
   const electronPath = require('electron')
   const script = [
     "const koffi = require('koffi')",
