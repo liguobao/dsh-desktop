@@ -8,6 +8,7 @@ import {
   ensureProfileInitialized,
   installBundledFileViewerPlugin,
   installBundledRemotePlugin,
+  disableUserPluginBundles,
 } from './plugin-management.js'
 
 const DSH_HOME_DIRECTORIES = ['profiles', 'sessions', 'storages', 'skills', 'scripts', 'cache']
@@ -50,6 +51,7 @@ export async function repairDesktopEnvironment({
   ensureProfileInitializedImpl = ensureProfileInitialized,
   installBundledRemotePluginImpl = installBundledRemotePlugin,
   installBundledFileViewerPluginImpl = installBundledFileViewerPlugin,
+  disableUserPluginBundlesImpl = disableUserPluginBundles,
 } = {}) {
   if (typeof dshHome !== 'string' || dshHome.trim() === '') throw new Error('DSH home is required')
   if (typeof toolchainDirectory !== 'string' || toolchainDirectory.trim() === '') {
@@ -96,6 +98,16 @@ export async function repairDesktopEnvironment({
     return {
       status: manifestExisted && workspaceExisted ? 'info' : 'applied',
       detail: `Profile ${profile} is ready: ${initialized}`,
+    }
+  })
+
+  await runRepairAction(actions, 'disable-user-plugins', () => {
+    const disabled = disableUserPluginBundlesImpl({ dshHome, profile })
+    return {
+      status: disabled.length === 0 ? 'info' : 'applied',
+      detail: disabled.length === 0
+        ? 'No user plugin bundles were enabled'
+        : `Disabled user plugin bundles: ${disabled.join(', ')}`,
     }
   })
 

@@ -270,6 +270,19 @@ function bundledPluginFilesAvailable(directory, manifest) {
   )
 }
 
+function bundledPluginNeedsRefresh(sourceDir, targetDir, manifest) {
+  if (!bundledPluginFilesAvailable(targetDir, manifest)) return true
+  const files = ['package.json', manifest.main, manifest.dsh?.bundle?.patch]
+    .filter(path => typeof path === 'string' && path.trim() !== '')
+  return files.some(path => {
+    try {
+      return readFileSync(join(sourceDir, path), 'utf8') !== readFileSync(join(targetDir, path), 'utf8')
+    } catch {
+      return true
+    }
+  })
+}
+
 /** Seed a prebuilt bundled plugin and its runtime dependency closure without network access. */
 export async function installBundledPlugin({
   dshHome,
@@ -331,7 +344,7 @@ export async function installBundledPlugin({
         && semver.valid(sourceManifest.version) === sourceManifest.version
         && semver.lt(declaredSpec, sourceManifest.version))
     const needsBundledRepair = declaredSpec === dependencySpecifier
-      && !bundledPluginFilesAvailable(targetPlugin, sourceManifest)
+      && bundledPluginNeedsRefresh(sourceDir, targetPlugin, sourceManifest)
     if (!needsMigration && !needsBundledRepair) return targetPlugin
     await rm(targetPlugin, { recursive: true, force: true })
   }
@@ -386,6 +399,19 @@ export function installBundledFileViewerPlugin(options) {
     spec: options.spec ?? BUNDLED_FILE_VIEWER_SPEC,
     legacySpecs: LEGACY_BUNDLED_FILE_VIEWER_SPECS,
   })
+}
+
+/** Disable user bundles while repairing a profile that may fail during startup. */
+export function disableUserPluginBundles({ dshHome, profile = PLUGIN_PROFILE }) {
+  const profileDir = ensureProfileInitialized(dshHome, profile)
+  const manifestPath = join(profileDir, 'package.json')
+  const manifest = readJson(manifestPath)
+  const bundles = Array.isArray(manifest.dsh?.profile?.bundles) ? manifest.dsh.profile.bundles : []
+  const disabled = bundles.filter(name => !SYSTEM_BUNDLES.has(name))
+  if (disabled.length === 0) return disabled
+  manifest.dsh = { ...manifest.dsh, profile: { ...manifest.dsh?.profile, bundles: bundles.filter(name => SYSTEM_BUNDLES.has(name)) } }
+  writeJsonAtomic(manifestPath, manifest)
+  return disabled
 }
 
 function normalizeGitHubRef(value) {
