@@ -41,7 +41,7 @@ test('release builds bundle the prebuilt remote plugin and its runtime dependenc
 })
 
 test('release builds use the published Harness release candidate without vendored tarballs', () => {
-  const harnessVersion = '0.1.5-rc.1'
+  const harnessVersion = '0.1.5-rc.2'
   assert.equal(packageJson.dependencies['@deepseek-ai/dsh'], harnessVersion)
   assert.equal(packageJson.dependencies['@deepseek-ai/dsh-util-time'], harnessVersion)
   assert.equal(packageLock.packages['node_modules/@deepseek-ai/dsh'].version, harnessVersion)
