@@ -271,9 +271,12 @@ export function launchEditor(editor, path, spawnImpl = nodeSpawn) {
 export function readDesktopSettings(path) {
   try {
     const parsed = JSON.parse(readFileSync(path, 'utf8'))
-    return { editor: typeof parsed.editor === 'string' ? parsed.editor : 'auto' }
+    return {
+      editor: typeof parsed.editor === 'string' ? parsed.editor : 'auto',
+      autoLaunch: parsed.autoLaunch === true,
+    }
   } catch {
-    return { editor: 'auto' }
+    return { editor: 'auto', autoLaunch: false }
   }
 }
 

@@ -192,6 +192,50 @@ dd {
   cursor: default;
 }
 
+.switch {
+  flex: none;
+  width: 44px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 0;
+  position: relative;
+  cursor: pointer;
+  background: var(--border);
+  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 160ms ease-out;
+}
+
+.switch[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.switch[aria-checked="true"]::after {
+  transform: translateX(18px);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.switch:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .external-mark {
   flex: none;
   color: var(--accent);
@@ -235,5 +279,7 @@ footer p {
 
 @media (prefers-reduced-motion: reduce) {
   .source-link,
-  .repair-button { transition: none; }
+  .repair-button,
+  .switch,
+  .switch::after { transition: none; }
 }

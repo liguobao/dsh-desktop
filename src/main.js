@@ -129,6 +129,7 @@ let activeWorkspace
 let workspaceRoots = []
 let editors = []
 let editorPreference = 'auto'
+let autoLaunchEnabled = false
 let desktopSettingsPath
 let desktopIpcInstalled = false
 let dshHome
@@ -255,11 +256,40 @@ async function reportDesktopAction(action) {
   }
 }
 
+function saveDesktopSettings() {
+  if (desktopSettingsPath !== undefined) {
+    writeDesktopSettings(desktopSettingsPath, { editor: editorPreference, autoLaunch: autoLaunchEnabled })
+  }
+}
+
+function senderIsAboutPage(event) {
+  if (aboutWindow?.isDestroyed() !== false || event.sender !== aboutWindow.webContents) return false
+  try {
+    return fileURLToPath(event.senderFrame?.url ?? event.sender.getURL()) === pagePath('about.html')
+  } catch {
+    return false
+  }
+}
+
+function supportsAutoLaunch() {
+  return process.platform === 'win32'
+}
+
+function applyAutoLaunch(enabled) {
+  if (!supportsAutoLaunch()) return false
+  app.setLoginItemSettings({ openAtLogin: enabled })
+  return app.getLoginItemSettings().openAtLogin
+}
+
+function setAutoLaunch(enabled) {
+  autoLaunchEnabled = applyAutoLaunch(enabled)
+  saveDesktopSettings()
+  return autoLaunchEnabled
+}
+
 function saveEditorPreference(preference) {
   editorPreference = normalizeEditorPreference(preference, editors)
-  if (desktopSettingsPath !== undefined) {
-    writeDesktopSettings(desktopSettingsPath, { editor: editorPreference })
-  }
+  saveDesktopSettings()
   buildMenu()
 }
 
@@ -357,6 +387,19 @@ function installDesktopIpc() {
     try {
       void shell.openExternal(normalizePluginSourceUrl(url))
       return { ok: true }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('dsh-desktop:auto-launch-get', (event) => {
+    if (!senderIsAboutPage(event)) return { ok: false, error: 'Untrusted auto-launch request' }
+    return { ok: true, supported: supportsAutoLaunch(), enabled: autoLaunchEnabled }
+  })
+  ipcMain.handle('dsh-desktop:auto-launch-set', (event, enabled) => {
+    if (!senderIsAboutPage(event)) return { ok: false, error: 'Untrusted auto-launch request' }
+    if (typeof enabled !== 'boolean') return { ok: false, error: 'Invalid auto-launch value' }
+    try {
+      return { ok: true, supported: supportsAutoLaunch(), enabled: setAutoLaunch(enabled) }
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
@@ -799,6 +842,7 @@ function showAbout() {
   void window.loadFile(pagePath('about.html'), {
     query: {
       lang: isChinese ? 'zh' : 'en',
+      autoLaunch: supportsAutoLaunch() ? '1' : '0',
       ...aboutVersions(),
     },
   })
@@ -1038,7 +1082,16 @@ if (!hasLock) {
     writeLog('desktop', `Desktop integration plugin installed at ${installedPlugin}.\n`)
     editors = detectEditors()
     desktopSettingsPath = join(app.getPath('userData'), 'desktop-settings.json')
-    editorPreference = normalizeEditorPreference(readDesktopSettings(desktopSettingsPath).editor, editors)
+    const desktopSettings = readDesktopSettings(desktopSettingsPath)
+    editorPreference = normalizeEditorPreference(desktopSettings.editor, editors)
+    if (supportsAutoLaunch() && desktopSettings.autoLaunch) {
+      // Re-apply on startup so the registry entry tracks the installed app path after updates.
+      try {
+        autoLaunchEnabled = applyAutoLaunch(true)
+      } catch (error) {
+        writeLog('stderr', `Unable to apply auto-launch setting: ${error instanceof Error ? error.message : String(error)}\n`)
+      }
+    }
     writeLog('desktop', `Detected editors: ${editors.map(editor => editor.id).join(', ') || 'none'}.\n`)
     installDesktopIpc()
     splashWindow = createSplashWindow()

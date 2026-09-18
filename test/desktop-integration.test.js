@@ -140,7 +140,15 @@ test('launches editors with argv and never through a shell', async () => {
 
 test('persists the preferred editor in an app-owned settings document', (t) => {
   const file = join(temporaryDirectory(t), 'settings', 'desktop.json')
-  assert.deepEqual(readDesktopSettings(file), { editor: 'auto' })
-  writeDesktopSettings(file, { editor: 'cursor' })
-  assert.deepEqual(readDesktopSettings(file), { editor: 'cursor' })
+  assert.deepEqual(readDesktopSettings(file), { editor: 'auto', autoLaunch: false })
+  writeDesktopSettings(file, { editor: 'cursor', autoLaunch: false })
+  assert.deepEqual(readDesktopSettings(file), { editor: 'cursor', autoLaunch: false })
+})
+
+test('persists the auto-launch preference in an app-owned settings document', (t) => {
+  const file = join(temporaryDirectory(t), 'settings', 'desktop.json')
+  writeDesktopSettings(file, { editor: 'auto', autoLaunch: true })
+  assert.deepEqual(readDesktopSettings(file), { editor: 'auto', autoLaunch: true })
+  writeDesktopSettings(file, { editor: 'auto', autoLaunch: false })
+  assert.equal(readDesktopSettings(file).autoLaunch, false)
 })

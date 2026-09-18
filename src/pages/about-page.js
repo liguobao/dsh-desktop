@@ -16,6 +16,12 @@
       repaired: '修复完成，正在重启 Harness…',
       repairFailed: '修复失败',
       repairUnavailable: '当前版本无法从此页面触发修复',
+      startup: '启动',
+      startupDescription: '登录 Windows 时自动启动 DSH Desktop。',
+      startupTitle: '开机自启动',
+      startupOn: '已开启',
+      startupOff: '已关闭',
+      startupFailed: '设置失败',
       source: '源代码',
       sourceDescription: '在 GitHub 查看发布版本、反馈问题或参与贡献。',
       community: '独立社区项目，并非 DeepSeek 官方应用。',
@@ -33,6 +39,12 @@
       repaired: 'Repair complete. Restarting Harness…',
       repairFailed: 'Repair failed',
       repairUnavailable: 'Repair is not available from this page',
+      startup: 'Startup',
+      startupDescription: 'Launch DSH Desktop automatically when you sign in to Windows.',
+      startupTitle: 'Start automatically',
+      startupOn: 'On',
+      startupOff: 'Off',
+      startupFailed: 'Failed to update',
       source: 'Source code',
       sourceDescription: 'View releases, report issues, or contribute on GitHub.',
       community: 'An independent community project, not an official DeepSeek application.',
@@ -62,6 +74,41 @@
   document.querySelector('#file-viewer-version').textContent = version('fileViewer')
   document.querySelector('#project-link').href = projectUrl
   document.querySelector('#project-url').textContent = projectUrl.replace(/^https:\/\//, '')
+
+  const startupSection = document.querySelector('#startup-section')
+  const startupToggle = document.querySelector('#startup-toggle')
+  const startupStatus = document.querySelector('#startup-status')
+
+  function renderStartup(enabled) {
+    startupToggle.setAttribute('aria-checked', String(enabled))
+    startupStatus.textContent = enabled ? strings.startupOn : strings.startupOff
+  }
+
+  async function initStartup() {
+    if (query.get('autoLaunch') !== '1' || window.dshDesktop?.getAutoLaunch === undefined) return
+    document.querySelector('#startup-heading').textContent = strings.startup
+    document.querySelector('#startup-description').textContent = strings.startupDescription
+    document.querySelector('#startup-title').textContent = strings.startupTitle
+    startupSection.hidden = false
+    const result = await window.dshDesktop.getAutoLaunch()
+    if (result?.ok && result.supported) renderStartup(result.enabled)
+    else startupSection.hidden = true
+  }
+
+  startupToggle.addEventListener('click', async () => {
+    const next = startupToggle.getAttribute('aria-checked') !== 'true'
+    startupToggle.disabled = true
+    try {
+      const result = await window.dshDesktop.setAutoLaunch(next)
+      if (result?.ok) renderStartup(result.enabled)
+      else startupStatus.textContent = result?.error || strings.startupFailed
+    } catch (error) {
+      startupStatus.textContent = error instanceof Error ? error.message : String(error)
+    } finally {
+      startupToggle.disabled = false
+    }
+  })
+  void initStartup()
 
   const repairButton = document.querySelector('#repair-button')
   const repairStatus = document.querySelector('#repair-status')
