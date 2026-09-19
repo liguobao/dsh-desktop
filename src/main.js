@@ -75,6 +75,8 @@ function setLocale(locale) {
       nativeOpenFailed: '无法打开本地路径',
       plugins: '插件',
       pluginManager: 'DSH 插件管理',
+      autoLaunch: '开机自启动',
+      autoLaunchFailed: '无法修改开机自启动设置',
       about: '关于 DSH Desktop',
     } : {
       preparing: 'Preparing the desktop window…',
@@ -107,6 +109,8 @@ function setLocale(locale) {
       nativeOpenFailed: 'Could Not Open Local Path',
       plugins: 'Plugins',
       pluginManager: 'DSH Plugin Manager',
+      autoLaunch: 'Launch at Login',
+      autoLaunchFailed: 'Could Not Change Launch at Login',
       about: 'About DSH Desktop',
     }
 }
@@ -284,6 +288,10 @@ function applyAutoLaunch(enabled) {
 function setAutoLaunch(enabled) {
   autoLaunchEnabled = applyAutoLaunch(enabled)
   saveDesktopSettings()
+  buildMenu()
+  if (aboutWindow?.isDestroyed() === false) {
+    aboutWindow.webContents.send('dsh-desktop:auto-launch-changed', autoLaunchEnabled)
+  }
   return autoLaunchEnabled
 }
 
@@ -885,6 +893,13 @@ async function startHarness(message = copy.preparing) {
   if (generation !== restartGeneration || quitting) return
 
   try {
+    // Profile package operations can prune undeclared local packages. Restore
+    // the app-owned adapter before each boot, including in-app restarts.
+    const installedPlugin = installDesktopPlugin({
+      sourceDir: join(import.meta.dirname, 'plugins', 'dsh-desktop-integration'),
+      dshHome,
+    })
+    writeLog('desktop', `Desktop integration plugin installed at ${installedPlugin}.\n`)
     const nextServer = new HarnessServer({
       command: process.execPath,
       // Cordis HMR uses Node internals even in production. Electron's embedded
@@ -1031,6 +1046,19 @@ function buildMenu() {
     {
       role: 'help',
       submenu: [
+        ...(supportsAutoLaunch() ? [{
+          label: copy.autoLaunch,
+          type: 'checkbox',
+          checked: autoLaunchEnabled,
+          click: (item) => {
+            try {
+              setAutoLaunch(item.checked)
+            } catch (error) {
+              item.checked = autoLaunchEnabled
+              dialog.showErrorBox(copy.autoLaunchFailed, error instanceof Error ? error.message : String(error))
+            }
+          },
+        }, { type: 'separator' }] : []),
         ...(updateItem === undefined ? [] : [{
           label: updateItem.label,
           enabled: updateItem.enabled,
@@ -1075,11 +1103,6 @@ if (!hasLock) {
       pnpmEntry: resolvePnpmEntry(),
       env: process.env,
     })
-    const installedPlugin = installDesktopPlugin({
-      sourceDir: join(import.meta.dirname, 'plugins', 'dsh-desktop-integration'),
-      dshHome,
-    })
-    writeLog('desktop', `Desktop integration plugin installed at ${installedPlugin}.\n`)
     editors = detectEditors()
     desktopSettingsPath = join(app.getPath('userData'), 'desktop-settings.json')
     const desktopSettings = readDesktopSettings(desktopSettingsPath)

@@ -80,14 +80,14 @@ export function resolveHarnessHome(env = process.env, cwd = process.cwd(), userH
   return resolve(cwd, value)
 }
 
-/** Install the app-owned out-of-tree plugin into DSH's documented profile fallback. */
+/** Install the app-owned adapter locally in the Web profile's module scope. */
 export function installDesktopPlugin({ sourceDir, dshHome }) {
   const manifest = JSON.parse(readFileSync(join(sourceDir, 'package.json'), 'utf8'))
   if (manifest.name !== DESKTOP_PLUGIN_PACKAGE) {
     throw new Error(`Desktop integration package must be named ${DESKTOP_PLUGIN_PACKAGE}`)
   }
 
-  const targetDir = join(dshHome, 'profiles', 'node_modules', '@dsh-desktop', 'integration')
+  const targetDir = join(dshHome, 'profiles', 'web', 'node_modules', '@dsh-desktop', 'integration')
   for (const file of DESKTOP_PLUGIN_FILES) {
     const source = join(sourceDir, file)
     const target = join(targetDir, file)

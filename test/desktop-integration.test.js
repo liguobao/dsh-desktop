@@ -58,15 +58,19 @@ test('provides Harness with app-owned node and pnpm commands ahead of the user P
   assert.match(readFileSync(join(directory, 'pnpm'), 'utf8'), /pnpm\.mjs/)
 })
 
-test('installs only the standalone adapter package into the DSH plugin fallback', (t) => {
+test('installs only the standalone adapter package into the Web profile module scope', (t) => {
   const dshHome = temporaryDirectory(t)
   const sourceDir = fileURLToPath(new URL('../src/plugins/dsh-desktop-integration/', import.meta.url))
   const target = installDesktopPlugin({ sourceDir, dshHome })
+  assert.equal(target, join(dshHome, 'profiles', 'web', 'node_modules', '@dsh-desktop', 'integration'))
 
   for (const file of DESKTOP_PLUGIN_FILES) {
     assert.equal(readFileSync(join(target, file), 'utf8'), readFileSync(join(sourceDir, file), 'utf8'))
   }
   assert.equal(JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')).name, '@dsh-desktop/integration')
+  rmSync(target, { recursive: true })
+  assert.equal(installDesktopPlugin({ sourceDir, dshHome }), target)
+  assert.equal(readFileSync(join(target, 'lib/client.js'), 'utf8'), readFileSync(join(sourceDir, 'lib/client.js'), 'utf8'))
 })
 
 test('authorizes existing files inside canonical workspace roots only', (t) => {

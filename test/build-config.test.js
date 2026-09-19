@@ -40,8 +40,8 @@ test('release builds bundle the prebuilt remote plugin and its runtime dependenc
   assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"ds-harness-remote"/)
 })
 
-test('release builds use the published Harness release candidate without vendored tarballs', () => {
-  const harnessVersion = '0.1.5-rc.2'
+test('release builds pin Harness alpha.2 while keeping our own Electron desktop', () => {
+  const harnessVersion = '0.1.6-alpha.2'
   assert.equal(packageJson.dependencies['@deepseek-ai/dsh'], harnessVersion)
   assert.equal(packageJson.dependencies['@deepseek-ai/dsh-util-time'], harnessVersion)
   assert.equal(packageLock.packages['node_modules/@deepseek-ai/dsh'].version, harnessVersion)
@@ -52,9 +52,24 @@ test('release builds use the published Harness release candidate without vendore
     '@deepseek-ai/dsh-code-runtime-python',
     '@deepseek-ai/dsh-session-persistence-sqlite',
     '@deepseek-ai/dsh-tool-subagent-report',
+    '@deepseek-ai/dsh-code-runtime',
+    '@deepseek-ai/dsh-code-runtime-worker-thread',
+    '@deepseek-ai/dsh-workflow-worker-thread',
+    '@deepseek-ai/dsh-e2b',
+    '@deepseek-ai/dsh-fs-e2b',
+    '@deepseek-ai/dsh-subprocess-e2b',
+    '@deepseek-ai/dsh-desktop',
+    '@deepseek-ai/dsh-desktop-host',
   ]) {
     assert.equal(packageJson.overrides[removedPackage], undefined)
     assert.equal(packageLock.packages[`node_modules/${removedPackage}`], undefined)
+  }
+  assert.equal(packageJson.main, 'src/main.js')
+  assert.equal(packageJson.dependencies['@deepseek-ai/dsh-ptc-runtime'], harnessVersion)
+  for (const [path, manifest] of Object.entries(packageLock.packages)) {
+    if (/node_modules\/@deepseek-ai\/dsh(?:-[^/]+)?$/.test(path)) {
+      assert.equal(manifest.version, harnessVersion, path)
+    }
   }
   assert.equal(
     Object.entries({ ...packageJson.dependencies, ...packageJson.overrides })

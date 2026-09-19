@@ -1,5 +1,9 @@
 # PowerShell 沙箱控制台弹窗：根因分析与修复报告
 
+## 当前实现说明
+
+自接入 Harness `0.1.6-alpha.2` 起，Desktop 使用上游的 `STARTF_USESHOWWINDOW` / `SW_HIDE` 实现隐藏初始窗口，已移除旧版 `CREATE_NO_WINDOW` 补丁及 `patch-package`。上游指出 `CREATE_NO_WINDOW` 可能导致受限令牌进程的 DLL 初始化失败，因此不再重放该补丁。下文保留旧版本的问题调查记录；Windows ACL 行为仍由 `test/windows-acl-sandbox.test.js` 验证。
+
 ## 结论
 
 DSH Desktop 0.1.56 在 Windows 的“仅查看”和“工作区修改”权限下通过 `pwsh` 工具执行命令时，实际调用的是受限令牌 ACL 沙箱路径，而不是普通进程创建路径：

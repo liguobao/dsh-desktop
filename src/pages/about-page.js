@@ -89,6 +89,7 @@
     document.querySelector('#startup-heading').textContent = strings.startup
     document.querySelector('#startup-description').textContent = strings.startupDescription
     document.querySelector('#startup-title').textContent = strings.startupTitle
+    startupToggle.setAttribute('aria-label', strings.startupTitle)
     startupSection.hidden = false
     const result = await window.dshDesktop.getAutoLaunch()
     if (result?.ok && result.supported) renderStartup(result.enabled)
@@ -108,6 +109,8 @@
       startupToggle.disabled = false
     }
   })
+  const stopAutoLaunchUpdates = window.dshDesktop?.onAutoLaunchChanged?.(renderStartup)
+  window.addEventListener('unload', () => stopAutoLaunchUpdates?.(), { once: true })
   void initStartup()
 
   const repairButton = document.querySelector('#repair-button')

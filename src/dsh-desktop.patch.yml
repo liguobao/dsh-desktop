@@ -1,5 +1,5 @@
 # Desktop-only overlay. The adapter is installed into DSH's documented
-# out-of-tree plugin fallback before the child process starts.
+# Web profile's node_modules before the child process starts.
 - insert:
     - id: dsh-desktop-integration
       name: '@dsh-desktop/integration'
