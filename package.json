@@ -56,11 +56,11 @@
     "@deepseek-ai/dsh-util-time": "0.1.6-alpha.2",
     "@deepseek-ai/dsh-util-workspace-path": "0.1.6-alpha.2",
     "@deepseek-ai/dsh-workflow": "0.1.6-alpha.2",
-    "ds-harness-remote": "0.4.13",
-    "dsh-file-viewer": "0.3.5",
-    "pnpm": "11.24.0",
+    "ds-harness-remote": "0.4.14",
+    "dsh-file-viewer": "0.3.7",
+    "pnpm": "12.4.2",
     "semver": "7.8.5",
-    "yaml": "2.9.0"
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "electron": "44.0.0",
