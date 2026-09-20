@@ -55,6 +55,7 @@ function setLocale(locale) {
       startupFailed: 'DeepSeek Harness 启动失败',
       stopped: 'DeepSeek Harness 已停止',
       openLogs: '打开日志目录',
+      developerOptions: '开发者选项',
       retry: '重启 Harness',
       repairEnvironment: '修复运行环境',
       repairEnvironmentBusy: '运行环境修复正在进行',
@@ -89,6 +90,7 @@ function setLocale(locale) {
       startupFailed: 'DeepSeek Harness failed to start',
       stopped: 'DeepSeek Harness stopped',
       openLogs: 'Open Logs Folder',
+      developerOptions: 'Developer Options',
       retry: 'Restart Harness',
       repairEnvironment: 'Repair Runtime Environment',
       repairEnvironmentBusy: 'Runtime environment repair is already running',
@@ -1070,6 +1072,13 @@ function buildMenu() {
           click: () => void repairEnvironmentAndRestart(),
         },
         { label: copy.openLogs, click: () => { if (logPath !== undefined) void shell.openPath(dirname(logPath)) } },
+        {
+          label: copy.developerOptions,
+          click: (_item, window) => {
+            const targetWindow = window ?? mainWindow
+            if (targetWindow && !targetWindow.isDestroyed()) targetWindow.webContents.openDevTools()
+          },
+        },
         { label: 'DeepSeek Harness', click: () => void shell.openExternal('https://github.com/deepseek-ai/deepseek-harness') },
         ...(process.platform === 'darwin' ? [] : [{ type: 'separator' }, { label: copy.about, click: showAbout }]),
       ],
