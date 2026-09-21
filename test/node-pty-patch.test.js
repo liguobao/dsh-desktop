@@ -283,7 +283,18 @@ test('check mode reports an unpatched and an absent tree as failures', () => {
   }
 })
 
-test('the packaged tree ships the patch, not the crash', { skip: installedLibPath() === undefined ? 'node-pty is not installed' : false }, () => {
+/**
+ * The patch is Windows-only by design: `run()` returns before touching anything
+ * on another platform, so this assertion is only meaningful where it installs.
+ */
+const packagedTreeSkipReason =
+  process.platform !== 'win32'
+    ? `the node-pty patch is Windows-only (running on ${process.platform})`
+    : installedLibPath() === undefined
+      ? 'node-pty is not installed'
+      : false
+
+test('the packaged tree ships the patch, not the crash', { skip: packagedTreeSkipReason }, () => {
   const lib = installedLibPath()
 
   for (const file of [CONOUT_FILE, AGENT_FILE]) {
