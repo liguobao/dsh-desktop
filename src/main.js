@@ -20,8 +20,15 @@ import {
   writeDesktopSettings,
 } from './desktop-integration.js'
 import { repairDesktopEnvironment } from './environment-repair.js'
-import { buildHarnessArgs, HarnessServer } from './harness-server.js'
+import { buildHarnessArgs, harnessDiagnosticDirectory, HarnessServer } from './harness-server.js'
+import {
+  crashRecordSize,
+  newestDiagnosticReport,
+  readDiagnosticReportSummary,
+  readHarnessCrashRecord,
+} from './harness-crash-log.js'
 import { isExternalHttpUrl, isHarnessUrl } from './navigation.js'
+import { pruneHarnessSessionCookies } from './browser-session.js'
 import { loadPluginCatalog, normalizePluginSourceUrl } from './plugin-catalog.js'
 import {
   ensureDefaultPlugins,
@@ -710,6 +717,18 @@ function installNavigationPolicy(window) {
   })
 }
 
+/** Directory shared by the Harness preload record and Node's fatal-error reports. */
+const diagnosticDirectory = harnessDiagnosticDirectory()
+
+function prepareHarnessDiagnosticDirectory() {
+  try {
+    mkdirSync(diagnosticDirectory, { recursive: true })
+    return diagnosticDirectory
+  } catch {
+    return undefined
+  }
+}
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1280,
@@ -912,6 +931,7 @@ async function startHarness(message = copy.preparing) {
         entry: resolveDshEntry(),
         parentWatch: join(import.meta.dirname, 'parent-watch.cjs'),
         patch: join(import.meta.dirname, 'dsh-desktop.patch.yml'),
+        reportDirectory: prepareHarnessDiagnosticDirectory(),
       }),
       cwd: app.getPath('home'),
       env: {
@@ -938,6 +958,27 @@ async function startHarness(message = copy.preparing) {
         void showError(copy.stopped, `Exit code: ${String(code)}, signal: ${String(signal)}`)
       }
     })
+    // A Harness that dies after it was ready otherwise leaves only the exit code.
+    // Record everything that can survive the death: the child's own last output,
+    // the crash record the preload persists synchronously (uncaught exception or a
+    // deliberate exit), and Node's fatal-error report (a native abort, which runs
+    // no JavaScript at all). A crash with no record and no report was a kill from
+    // outside this process.
+    const crashRecordOffset = crashRecordSize()
+    nextServer.on('diagnostic', ({ code, signal, output }) => {
+      const header = `Harness exited after startup (code=${String(code)}, signal=${String(signal)}).\n`
+      const record = readHarnessCrashRecord({ offset: crashRecordOffset })
+      const reportPath = newestDiagnosticReport(diagnosticDirectory, { sinceMs: startedAt })
+      const report = reportPath === undefined ? '' : readDiagnosticReportSummary(reportPath)
+      const parts = [header]
+      if (output !== '') parts.push(`Recent Harness output:\n${output}\n`)
+      if (record !== '') parts.push(`Harness crash record:\n${record}\n`)
+      if (report !== '') parts.push(`Harness fatal report:\n${report}\n`)
+      if (record === '' && report === '') {
+        parts.push('No Harness crash record or fatal report: the process was terminated from outside.\n')
+      }
+      writeLog('stderr', parts.join(''))
+    })
     const url = await nextServer.start()
     await updateLoading(copy.openingWorkspace, 82, 'harness-ready', generation)
     if (generation !== restartGeneration || quitting || mainWindow?.isDestroyed() !== false) {
@@ -946,6 +987,17 @@ async function startHarness(message = copy.preparing) {
     }
     harnessOrigin = new URL(url).origin
     await updateLoading(copy.openingWorkspace, 92, 'loading-workspace', generation)
+    // One Host launch issues one session cookie named after its own authority
+    // (`dsh-auth-<sha256(host:port)>`) that outlives the process, so every restart
+    // adds another cookie to the same origin. Left alone they eventually push the
+    // plugin-bundle request past the Host's header budget and the window lands on
+    // "Failed to load plugins" with a 431. Keep only the newest per host: the
+    // loadURL below installs this launch's cookie.
+    await pruneHarnessSessionCookies(mainWindow.webContents.session, (message) => writeLog('desktop', message))
+    if (generation !== restartGeneration || quitting || mainWindow?.isDestroyed() !== false) {
+      await nextServer.stop()
+      return
+    }
     await mainWindow.loadURL(url)
     await updateLoading(copy.ready, 100, 'complete', generation)
     writeLog('desktop', `Startup completed in ${String(Math.round(performance.now() - startedAt))} ms.\n`)

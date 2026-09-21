@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop",
-  "version": "0.1.62",
+  "version": "0.1.63",
   "description": "Community desktop wrapper for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "src/main.js",
@@ -16,9 +16,10 @@
   "scripts": {
     "start": "electron .",
     "pretest": "node node_modules/electron/install.js",
+    "postinstall": "node scripts/patch-node-pty-windows.mjs",
     "test": "node --test",
     "catalog:generate": "node scripts/generate-plugin-catalog.mjs",
-    "check": "node --check src/main.js && node --check src/auto-update.js && node --check src/desktop-integration.js && node --check src/environment-repair.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/plugin-catalog.js && node --check src/plugin-management.js && node --check src/startup-progress.js && node --check src/window-lifecycle.js && node --check src/parent-watch.cjs && node --check src/preload.cjs && node --check src/plugin-preload.cjs && node --check src/pages/about-page.js && node --check src/pages/manager-ui.js && node --check src/pages/plugins-page.js && node --check src/plugins/dsh-desktop-integration/lib/index.js && node --check src/plugins/dsh-desktop-integration/lib/client.js && node --check scripts/generate-plugin-catalog.mjs",
+    "check": "node --check src/main.js && node --check src/auto-update.js && node --check src/browser-session.js && node --check src/desktop-integration.js && node --check src/environment-repair.js && node --check src/harness-server.js && node --check src/navigation.js && node --check src/plugin-catalog.js && node --check src/plugin-management.js && node --check src/startup-progress.js && node --check src/window-lifecycle.js && node --check src/parent-watch.cjs && node --check src/preload.cjs && node --check src/plugin-preload.cjs && node --check src/pages/about-page.js && node --check src/pages/manager-ui.js && node --check src/pages/plugins-page.js && node --check src/plugins/dsh-desktop-integration/lib/index.js && node --check src/plugins/dsh-desktop-integration/lib/client.js && node --check scripts/generate-plugin-catalog.mjs && node --check scripts/patch-node-pty-windows.mjs",
     "dist": "electron-builder --publish never",
     "dist:linux": "electron-builder --linux AppImage --publish never",
     "dist:mac": "electron-builder --mac dmg --publish never",
@@ -147,6 +148,7 @@
     }
   },
   "overrides": {
+    "node-pty": "1.1.0",
     "@deepseek-ai/dsh": "0.1.6-alpha.2",
     "@deepseek-ai/dsh-acp": "0.1.6-alpha.2",
     "@deepseek-ai/dsh-acp-app": "0.1.6-alpha.2",

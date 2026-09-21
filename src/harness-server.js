@@ -1,4 +1,7 @@
 import { EventEmitter } from 'node:events'
+import { mkdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import process from 'node:process'
 import { spawn as nodeSpawn } from 'node:child_process'
 
@@ -35,12 +38,26 @@ function startupExitError({ code, signal, diagnostic }) {
   return new Error(`${reason}\n\nRecent Harness output:\n${diagnostic}`)
 }
 
-/** Build the DSH Web invocation used by the embedded desktop server. */
-export function buildHarnessArgs({ entry, parentWatch, patch }) {
+/** Directory the Harness preload and Node's own crash reports write into. */
+export function harnessDiagnosticDirectory(tmp = tmpdir()) {
+  return join(tmp, 'dsh-desktop-harness')
+}
+
+/**
+ * Build the DSH Web invocation used by the embedded desktop server.
+ *
+ * `--report-on-fatalerror` covers the failure a JavaScript handler cannot see:
+ * a native abort inside the ConPTY stack leaves no stderr and runs no exit hook,
+ * but Node still writes a report file. A report that exists for a crash proves
+ * the failure was native; one that does not exist means the process was killed
+ * from outside.
+ */
+export function buildHarnessArgs({ entry, parentWatch, patch, reportDirectory }) {
   return [
     '--expose-internals',
     '--require',
     parentWatch,
+    ...reportDirectory === undefined ? [] : ['--report-on-fatalerror', '--report-directory', reportDirectory],
     entry,
     'web',
     '--patch',
@@ -177,7 +194,13 @@ export class HarnessServer extends EventEmitter {
       child.stderr?.on('data', chunk => receive('stderr', chunk))
       child.once('error', error => finish(new Error(`Unable to start DeepSeek Harness: ${error.message}`, { cause: error })))
       child.once('exit', (code, signal) => {
-        this.emit('exit', { code, signal, ready: this.url !== undefined })
+        const ready = this.url !== undefined
+        this.emit('exit', { code, signal, ready })
+        // Past readiness the startup error carries nothing, so a running Harness
+        // that dies leaves no trace at all: the log records the exit code and the
+        // interesting stderr is discarded. Keep the tail instead — a crash here is
+        // exactly the case a bug report needs.
+        if (ready) this.emit('diagnostic', { code, signal, output: this.diagnosticOutput() })
         finish(startupExitError({ code, signal, diagnostic: this.diagnosticOutput() }))
       })
 

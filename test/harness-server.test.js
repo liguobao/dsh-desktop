@@ -23,6 +23,29 @@ test('embedded Web launch disables the upstream default-browser handoff', () => 
   ])
 })
 
+test('a fatal-error report directory is passed ahead of the entry point', () => {
+  assert.deepEqual(buildHarnessArgs({
+    entry: '/app/dsh/bin.js',
+    parentWatch: '/app/parent-watch.cjs',
+    patch: '/app/desktop.patch.yml',
+    reportDirectory: '/tmp/dsh-desktop-harness',
+  }), [
+    '--expose-internals',
+    '--require',
+    '/app/parent-watch.cjs',
+    '--report-on-fatalerror',
+    '--report-directory',
+    '/tmp/dsh-desktop-harness',
+    '/app/dsh/bin.js',
+    'web',
+    '--patch',
+    '/app/desktop.patch.yml',
+    '--port',
+    '0',
+    '--no-open',
+  ])
+})
+
 function fakeChild() {
   const child = new EventEmitter()
   child.stdout = new PassThrough()
@@ -103,6 +126,53 @@ test('spawns Harness with explicit argv and a GUI-style PATH', async () => {
   assert.equal(invocation.options.env.PATH, '/usr/bin:/bin')
   assert.equal(invocation.options.env.ELECTRON_RUN_AS_NODE, '1')
   assert.equal(invocation.options.shell, false)
+})
+
+test('a Harness that dies after readiness reports its own last output', async () => {
+  const child = fakeChild()
+  const server = new HarnessServer({
+    command: 'electron',
+    args: [],
+    cwd: '/',
+    env: {},
+    spawnImpl: () => child,
+  })
+  const ready = server.start()
+  child.stdout.write('dsh web: http://127.0.0.1:45678/?token=abc_DEF-123\n')
+  await ready
+
+  const diagnostics = []
+  server.on('diagnostic', (payload) => diagnostics.push(payload))
+  child.stderr.write('TypeError: Cannot read properties of undefined (reading \'destroy\')\n')
+  child.stderr.write('    at WindowsPtyAgent._failPtyConnection (node-pty/lib/windowsPtyAgent.js:165:24)\n')
+  child.exitCode = 1
+  child.emit('exit', 1, null)
+
+  assert.equal(diagnostics.length, 1)
+  assert.equal(diagnostics[0].code, 1)
+  assert.equal(diagnostics[0].signal, null)
+  assert.match(diagnostics[0].output, /Cannot read properties of undefined/)
+  assert.match(diagnostics[0].output, /_failPtyConnection/)
+})
+
+test('a Harness that dies before readiness reports no diagnostics', async () => {
+  const child = fakeChild()
+  const server = new HarnessServer({
+    command: 'electron',
+    args: [],
+    cwd: '/',
+    env: {},
+    spawnImpl: () => child,
+  })
+  const diagnostics = []
+  server.on('diagnostic', (payload) => diagnostics.push(payload))
+  const ready = server.start()
+  child.stderr.write('Error: cannot start\n')
+  child.exitCode = 1
+  child.emit('exit', 1, null)
+
+  await assert.rejects(ready, /exited before it was ready/)
+  assert.deepEqual(diagnostics, [])
 })
 
 test('sends a graceful tree signal during stop', async () => {
