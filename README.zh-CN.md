@@ -11,8 +11,7 @@
 ## 主要功能
 
 - 安装包开箱即用，无需另外安装 Node.js、npm 或执行 `npx`。
-- 内置版本匹配的 DeepSeek Harness、Remote 和 File Viewer 组件。
-- 只读预览源码、文本、Markdown、图片、PDF、CSV、JSON 和 YAML。
+- 内置版本匹配的 DeepSeek Harness 和 Remote 组件。
 - 从另一台已授权的电脑、手机、平板或浏览器继续远程会话。
 - 从 npm 或 GitHub 搜索和安装插件。
 - 使用 VS Code、Cursor、VSCodium、Zed 或系统文件管理器打开工作区。

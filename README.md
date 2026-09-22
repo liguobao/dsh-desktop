@@ -11,8 +11,7 @@ The bundled Harness version is `0.1.6-alpha.2` (`dsh-v0.1.6-alpha.2`). This proj
 ## Features
 
 - Ready-to-use packages with no separate Node.js, npm, or `npx` setup.
-- Bundled, version-matched DeepSeek Harness, Remote, and File Viewer components.
-- Read-only previews for source code, text, Markdown, images, PDFs, CSV, JSON, and YAML.
+- Bundled, version-matched DeepSeek Harness and Remote components.
 - Remote session access from another authorized computer, phone, tablet, or browser.
 - Plugin discovery and installation from npm or GitHub.
 - Workspace actions for VS Code, Cursor, VSCodium, Zed, and the system file manager.

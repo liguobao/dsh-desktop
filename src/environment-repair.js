@@ -6,7 +6,6 @@ import {
 } from './desktop-integration.js'
 import {
   ensureProfileInitialized,
-  installBundledFileViewerPlugin,
   installBundledRemotePlugin,
   disableUserPluginBundles,
 } from './plugin-management.js'
@@ -42,7 +41,6 @@ export async function repairDesktopEnvironment({
   pnpmEntry,
   desktopPluginDir,
   remotePluginDir,
-  fileViewerPluginDir,
   env = process.env,
   profile = 'web',
   onOutput = () => {},
@@ -50,7 +48,6 @@ export async function repairDesktopEnvironment({
   installDesktopPluginImpl = installDesktopPlugin,
   ensureProfileInitializedImpl = ensureProfileInitialized,
   installBundledRemotePluginImpl = installBundledRemotePlugin,
-  installBundledFileViewerPluginImpl = installBundledFileViewerPlugin,
   disableUserPluginBundlesImpl = disableUserPluginBundles,
 } = {}) {
   if (typeof dshHome !== 'string' || dshHome.trim() === '') throw new Error('DSH home is required')
@@ -64,9 +61,6 @@ export async function repairDesktopEnvironment({
   }
   if (typeof remotePluginDir !== 'string' || remotePluginDir.trim() === '') {
     throw new Error('Remote plugin directory is required')
-  }
-  if (typeof fileViewerPluginDir !== 'string' || fileViewerPluginDir.trim() === '') {
-    throw new Error('File viewer plugin directory is required')
   }
 
   const startedAt = performance.now()
@@ -143,20 +137,6 @@ export async function repairDesktopEnvironment({
       detail: target === undefined
         ? 'Bundled remote plugin is already newer and was left untouched'
         : `Bundled remote plugin is ready: ${target}`,
-    }
-  })
-
-  await runRepairAction(actions, 'file-viewer-plugin', async () => {
-    const target = await installBundledFileViewerPluginImpl({
-      sourceDir: fileViewerPluginDir,
-      dshHome,
-      profile,
-    })
-    return {
-      status: target === undefined ? 'skipped' : 'applied',
-      detail: target === undefined
-        ? 'Bundled file viewer plugin is already newer and was left untouched'
-        : `Bundled file viewer plugin is ready: ${target}`,
     }
   })
 

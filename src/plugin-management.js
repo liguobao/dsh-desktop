@@ -21,7 +21,6 @@ const DEFAULT_NPM_REGISTRY = 'https://registry.npmjs.org/'
 const MAX_NPM_VERSION_RESPONSE_LENGTH = 64 * 1024
 
 export const BUNDLED_REMOTE_SPEC = 'ds-harness-remote@0.4.13'
-export const BUNDLED_FILE_VIEWER_SPEC = 'dsh-file-viewer@0.3.5'
 /** Optional online defaults. Desktop-bundled plugins are prepared locally before Harness starts. */
 export const DEFAULT_PLUGINS = []
 const DEFAULT_PLUGIN_SEEN_ALIASES = new Map([
@@ -29,7 +28,6 @@ const DEFAULT_PLUGIN_SEEN_ALIASES = new Map([
     'github:liguobao/ds-harness-remote',
     'github:liguobao/deepseek-harness-remote',
   ]],
-  ['npm:dsh-file-viewer', ['github:liguobao/dsh-file-viewer']],
 ])
 const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   '0.4.12',
@@ -64,26 +62,6 @@ const LEGACY_BUNDLED_REMOTE_SPECS = new Set([
   'github:liguobao/deepseek-harness-remote#3a271eaeaa649647ec27e137fb7321526799a749',
   'github:liguobao/deepseek-harness-remote#a4826a4e48008adcbc15d7f075926657d87629e0',
   'github:liguobao/deepseek-harness-remote#da4beadabb57096a66b3ca790fd85a340a0ca899',
-])
-const LEGACY_BUNDLED_FILE_VIEWER_SPECS = new Set([
-  '0.3.4',
-  '0.3.3',
-  '0.3.2',
-  '0.3.1',
-  '0.3.0',
-  'github:liguobao/dsh-file-viewer#b28be6bad250a6bd52c81b3609faa88d2de10c39',
-  'github:liguobao/dsh-file-viewer#v0.2.5',
-  'github:liguobao/dsh-file-viewer#7fbfc7b8092c6ca1935b19b7563761a5600df522',
-  'github:liguobao/dsh-file-viewer#v0.2.4',
-  'github:liguobao/dsh-file-viewer#v0.2.3',
-  'github:liguobao/dsh-file-viewer#eacc407e205ffa4a37fbc36b0b99927a4ad68020',
-  'github:liguobao/dsh-file-viewer#v0.2.2',
-  'github:liguobao/dsh-file-viewer#v0.2.1',
-  'github:liguobao/dsh-file-viewer#ed2f9ede3ada97145b3701aa8a09f45fc229f53f',
-  'github:liguobao/dsh-file-viewer#a4d6e2cbf6424a47f93d735070741df391d5ede4',
-  'github:liguobao/dsh-file-viewer#605cd34b9e96ad7775f37493b701a601b97efeee',
-  'github:liguobao/dsh-file-viewer#4295572d3192fd4685aeda42b34a7ddb4b793754',
-  '0.1.3',
 ])
 
 const PROFILE_SYSTEM_BUNDLES = { web: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] }
@@ -388,16 +366,6 @@ export function installBundledRemotePlugin(options) {
     spec: options.spec ?? BUNDLED_REMOTE_SPEC,
     legacySpecs: LEGACY_BUNDLED_REMOTE_SPECS,
     legacyPackageNames: ['dsh-remote', 'deepseek-harness-remote'],
-  })
-}
-
-/** Seed the prebuilt file-viewer release and migrate superseded bundled sources. */
-export function installBundledFileViewerPlugin(options) {
-  return installBundledPlugin({
-    ...options,
-    packageName: 'dsh-file-viewer',
-    spec: options.spec ?? BUNDLED_FILE_VIEWER_SPEC,
-    legacySpecs: LEGACY_BUNDLED_FILE_VIEWER_SPECS,
   })
 }
 

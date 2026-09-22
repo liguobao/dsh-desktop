@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
-import semver from 'semver'
 
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const packageLock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'))
@@ -102,20 +101,9 @@ test('release notes and download docs include the mirror and remote Android APK'
   assert.equal(readmeZh.includes(mirror), true)
 })
 
-test('release builds bundle the prebuilt file viewer plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['dsh-file-viewer'], '0.3.5')
-  assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/index.js', import.meta.url)), true)
-  assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/dist/client.js', import.meta.url)), true)
-  assert.equal(existsSync(new URL('../node_modules/dsh-file-viewer/cordis.patch.yml', import.meta.url)), true)
-  const manifest = JSON.parse(readFileSync(new URL('../node_modules/dsh-file-viewer/package.json', import.meta.url), 'utf8'))
-  assert.equal(manifest.version, '0.3.5')
-  const bundle = readFileSync(new URL('../node_modules/dsh-file-viewer/dist/index.js', import.meta.url), 'utf8')
-  assert.match(bundle, /ctx\.inject\(\["connection", "webServer"\]/)
-  const harnessVersion = packageLock.packages['node_modules/@deepseek-ai/dsh'].version
-  for (const peer of ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-host-apiproxy']) {
-    assert.equal(semver.satisfies(harnessVersion, manifest.peerDependencies[peer], { includePrerelease: true }), true)
-    assert.equal(manifest.peerDependenciesMeta[peer].optional, true)
-  }
+test('release builds do not bundle the file viewer plugin', () => {
+  assert.equal(packageJson.dependencies['dsh-file-viewer'], undefined)
+  assert.equal(packageLock.packages['node_modules/dsh-file-viewer'], undefined)
 })
 
 test('release builds do not bundle the Codex subagent', () => {

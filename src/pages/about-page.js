@@ -71,7 +71,6 @@
   document.querySelector('#desktop-version').textContent = version('desktop')
   document.querySelector('#dsh-version').textContent = version('dsh')
   document.querySelector('#remote-version').textContent = version('remote')
-  document.querySelector('#file-viewer-version').textContent = version('fileViewer')
   document.querySelector('#project-link').href = projectUrl
   document.querySelector('#project-url').textContent = projectUrl.replace(/^https:\/\//, '')
 

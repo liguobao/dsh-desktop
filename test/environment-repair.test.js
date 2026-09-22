@@ -45,11 +45,9 @@ test('repairs the Desktop-owned Harness runtime environment from bundled sources
   const toolchainDirectory = join(directory, 'toolchain')
   const desktopPluginDir = join(directory, 'app', 'desktop-plugin')
   const remotePluginDir = join(directory, 'app', 'node_modules', 'ds-harness-remote')
-  const fileViewerPluginDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
   const logs = []
   writeDesktopPlugin(desktopPluginDir)
   writeBundledPlugin(remotePluginDir, 'ds-harness-remote', '0.4.13')
-  writeBundledPlugin(fileViewerPluginDir, 'dsh-file-viewer', '0.3.5')
 
   const report = await repairDesktopEnvironment({
     dshHome,
@@ -58,7 +56,6 @@ test('repairs the Desktop-owned Harness runtime environment from bundled sources
     pnpmEntry: '/Applications/DSH Desktop.app/Contents/Resources/app/node_modules/pnpm/bin/pnpm.mjs',
     desktopPluginDir,
     remotePluginDir,
-    fileViewerPluginDir,
     env: { PATH: '/usr/bin' },
     onOutput: (source, text) => logs.push({ source, text }),
   })
@@ -79,7 +76,7 @@ test('repairs the Desktop-owned Harness runtime environment from bundled sources
   )
 
   const catalog = readPluginCatalog({ dshHome })
-  assert.deepEqual(catalog.plugins.map(plugin => plugin.name), ['ds-harness-remote', 'dsh-file-viewer'])
+  assert.deepEqual(catalog.plugins.map(plugin => plugin.name), ['ds-harness-remote'])
   assert.equal(catalog.plugins.every(plugin => plugin.enabled), true)
   assert.match(logs.map(item => item.text).join(''), /Runtime environment repair completed/)
 })
@@ -88,12 +85,10 @@ test('reports a failed bundled repair step and continues with later steps', asyn
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
   const toolchainDirectory = join(directory, 'toolchain')
+  // The Desktop plugin source has no manifest, so its repair step fails.
   const desktopPluginDir = join(directory, 'app', 'desktop-plugin')
   const remotePluginDir = join(directory, 'app', 'node_modules', 'ds-harness-remote')
-  const fileViewerPluginDir = join(directory, 'app', 'node_modules', 'dsh-file-viewer')
-  writeDesktopPlugin(desktopPluginDir)
-  writeBundledPlugin(remotePluginDir, 'wrong-remote-name', '0.4.13')
-  writeBundledPlugin(fileViewerPluginDir, 'dsh-file-viewer', '0.3.5')
+  writeBundledPlugin(remotePluginDir, 'ds-harness-remote', '0.4.13')
 
   const report = await repairDesktopEnvironment({
     dshHome,
@@ -102,12 +97,13 @@ test('reports a failed bundled repair step and continues with later steps', asyn
     pnpmEntry: '/app/node_modules/pnpm/bin/pnpm.mjs',
     desktopPluginDir,
     remotePluginDir,
-    fileViewerPluginDir,
   })
 
   assert.equal(report.ok, false)
   assert.equal(report.failedCount, 1)
   assert.match(report.summary, /1 failed step/)
-  assert.equal(report.actions.find(action => action.kind === 'remote-plugin')?.status, 'failed')
-  assert.equal(existsSync(join(dshHome, 'profiles', 'web', 'node_modules', 'dsh-file-viewer', 'package.json')), true)
+  assert.equal(report.actions.find(action => action.kind === 'desktop-plugin')?.status, 'failed')
+  // The remote plugin step still ran after the failed Desktop plugin step.
+  assert.equal(report.actions.find(action => action.kind === 'remote-plugin')?.status, 'applied')
+  assert.equal(existsSync(join(dshHome, 'profiles', 'web', 'node_modules', 'ds-harness-remote', 'package.json')), true)
 })

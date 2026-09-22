@@ -8,7 +8,7 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { installDesktopPlugin, prepareHarnessToolchain } from '../src/desktop-integration.js'
 import { buildHarnessArgs, HarnessServer } from '../src/harness-server.js'
-import { installBundledFileViewerPlugin, installBundledRemotePlugin } from '../src/plugin-management.js'
+import { installBundledRemotePlugin } from '../src/plugin-management.js'
 
 const require = createRequire(import.meta.url)
 const source = fileURLToPath(new URL('../src/', import.meta.url))
@@ -29,7 +29,6 @@ test('bundled Electron boots Harness Web and our plugins with a GUI-only PATH', 
   const pnpmEntry = join(dirname(require.resolve('pnpm')), 'bin', 'pnpm.mjs')
   installDesktopPlugin({ sourceDir: join(source, 'plugins', 'dsh-desktop-integration'), dshHome })
   await installBundledRemotePlugin({ sourceDir: dirname(require.resolve('ds-harness-remote/package.json')), dshHome })
-  await installBundledFileViewerPlugin({ sourceDir: dirname(require.resolve('dsh-file-viewer/package.json')), dshHome })
   const env = prepareHarnessToolchain({
     directory: join(directory, 'toolchain'),
     execPath: electron,
@@ -80,7 +79,7 @@ test('bundled Electron boots Harness Web and our plugins with a GUI-only PATH', 
   })
   assert.equal(response.status, 200)
   const html = await response.text()
-  for (const name of ['@dsh-desktop/integration', 'ds-harness-remote', 'dsh-file-viewer']) {
+  for (const name of ['@dsh-desktop/integration', 'ds-harness-remote']) {
     assert.ok(html.includes(name), `Missing client plugin ${name}\n${server.diagnosticOutput()}`)
   }
   assert.doesNotMatch(html, /@deepseek-ai\/dsh-desktop(?:-host)?["/]/)

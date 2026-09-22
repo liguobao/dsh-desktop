@@ -39,13 +39,12 @@ test('bundled plugins are prepared locally after the splash appears and before H
   const readyHandler = source.slice(source.indexOf('app.whenReady().then'))
   const splash = readyHandler.indexOf('await showLoading(copy.preparing')
   const remote = readyHandler.indexOf('await installBundledRemotePlugin')
-  const fileViewer = readyHandler.indexOf('await installBundledFileViewerPlugin')
   const start = readyHandler.indexOf('startHarness().then')
 
   assert.ok(splash >= 0)
   assert.ok(remote > splash)
-  assert.ok(fileViewer > remote)
-  assert.ok(start > fileViewer)
+  assert.ok(start > remote)
+  assert.doesNotMatch(readyHandler, /installBundledFileViewerPlugin/)
   assert.doesNotMatch(readyHandler, /installBundledCodexSubagentPlugin/)
 })
 

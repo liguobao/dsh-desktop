@@ -32,7 +32,6 @@ import { pruneHarnessSessionCookies } from './browser-session.js'
 import { loadPluginCatalog, normalizePluginSourceUrl } from './plugin-catalog.js'
 import {
   ensureDefaultPlugins,
-  installBundledFileViewerPlugin,
   installBundledRemotePlugin,
   installPlugin as installProfilePlugin,
   readPluginCatalog,
@@ -494,7 +493,6 @@ function aboutVersions() {
     desktop: app.getVersion(),
     dsh: bundledPackageVersion('@deepseek-ai/dsh'),
     remote: aboutPluginVersion('ds-harness-remote'),
-    fileViewer: aboutPluginVersion('dsh-file-viewer'),
   }
 }
 
@@ -522,7 +520,6 @@ async function repairEnvironmentAndRestart() {
       pnpmEntry: resolvePnpmEntry(),
       desktopPluginDir: join(import.meta.dirname, 'plugins', 'dsh-desktop-integration'),
       remotePluginDir: dirname(require.resolve('ds-harness-remote/package.json')),
-      fileViewerPluginDir: dirname(require.resolve('dsh-file-viewer/package.json')),
       env: process.env,
       onOutput: writeLog,
     })
@@ -1190,16 +1187,6 @@ if (!hasLock) {
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
       writeLog('stderr', `Bundled remote plugin preparation failed: ${detail}\n`)
-    }
-    try {
-      const bundledFileViewer = await installBundledFileViewerPlugin({
-        sourceDir: dirname(require.resolve('dsh-file-viewer/package.json')),
-        dshHome,
-      })
-      if (bundledFileViewer !== undefined) writeLog('desktop', `Bundled file viewer plugin available at ${bundledFileViewer}.\n`)
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error)
-      writeLog('stderr', `Bundled file viewer plugin preparation failed: ${detail}\n`)
     }
     initializeAutoUpdates()
     buildMenu()
