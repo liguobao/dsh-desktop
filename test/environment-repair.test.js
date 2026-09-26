@@ -47,7 +47,7 @@ test('repairs the Desktop-owned Harness runtime environment from bundled sources
   const remotePluginDir = join(directory, 'app', 'node_modules', 'ds-harness-remote')
   const logs = []
   writeDesktopPlugin(desktopPluginDir)
-  writeBundledPlugin(remotePluginDir, 'ds-harness-remote', '0.4.13')
+  writeBundledPlugin(remotePluginDir, 'ds-harness-remote', '0.4.8')
 
   const report = await repairDesktopEnvironment({
     dshHome,
@@ -88,7 +88,7 @@ test('reports a failed bundled repair step and continues with later steps', asyn
   // The Desktop plugin source has no manifest, so its repair step fails.
   const desktopPluginDir = join(directory, 'app', 'desktop-plugin')
   const remotePluginDir = join(directory, 'app', 'node_modules', 'ds-harness-remote')
-  writeBundledPlugin(remotePluginDir, 'ds-harness-remote', '0.4.13')
+  writeBundledPlugin(remotePluginDir, 'ds-harness-remote', '0.4.8')
 
   const report = await repairDesktopEnvironment({
     dshHome,

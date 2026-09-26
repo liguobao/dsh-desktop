@@ -21,3 +21,8 @@ Three defects live above this wrapper. Fix them here only as compensation, and d
 - Do not use pnpm commands that delegate to a separately installed npm executable, including `pnpm view` and `pnpm info`. Fetch npm registry metadata through the desktop network layer using the registry configured for pnpm, then use bundled pnpm only for package mutations.
 - Do not fix GUI-versus-terminal environment failures by guessing shell installation paths or copying a developer machine's `PATH`. If a genuinely external tool is required, detect it explicitly and return an actionable error; otherwise bundle the dependency or replace the CLI call with an in-process API.
 - Any change that launches a process or checks package updates must include a regression test with a minimal GUI-style `PATH` where `npm`, user-installed Node.js, and user-installed pnpm are unavailable. Tests must prove that app-owned workflows still use bundled tools and do not fall through to system package managers.
+
+
+## Bundled components
+
+- `dsh-file-viewer` is intentionally removed and must not be reintroduced as a bundled dependency or startup plugin.

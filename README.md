@@ -4,7 +4,11 @@
 
 An independent, open-source desktop app for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It bundles a tested Harness version and runs it locally in a hardened Electron window on Windows, macOS, and Linux.
 
-The bundled Harness version is `0.1.6-alpha.2` (`dsh-v0.1.6-alpha.2`). This project keeps its own Electron application, launching the Harness **Web** profile with the Desktop integration adapter. It does not use upstream's Desktop application or Desktop host.
+The bundled Harness version is `0.1.7-rc.2` (`dsh-v0.1.7-rc.2`). This project keeps its own Electron application, launching the Harness **Web** profile with the Desktop integration adapter. It does not use upstream's Desktop application or Desktop host.
+
+The bundled `dsh-file-viewer` plugin has been removed; file preview is no longer included.
+
+The bundled `dsh-file-viewer` plugin has been removed; file preview is no longer included.
 
 > DSH Desktop is a community project, not an official DeepSeek product. DeepSeek Harness is currently a developer preview and may introduce breaking changes.
 

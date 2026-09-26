@@ -30,17 +30,17 @@ test('development and CI use Node.js 24', () => {
 })
 
 test('release builds bundle the prebuilt remote plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.13')
+  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.8')
   assert.equal(existsSync(new URL('../node_modules/ds-harness-remote/dist/index.js', import.meta.url)), true)
   const host = readFileSync(new URL('../node_modules/ds-harness-remote/dist/index.js', import.meta.url), 'utf8')
-  assert.match(host, /webServer\.register/)
-  assert.match(host, /requestRejection/)
+  assert.match(host, /HostPluginRuntime/)
+  assert.match(host, /HARNESS_REMOTE_ALLOWLIST/)
   const client = readFileSync(new URL('../node_modules/ds-harness-remote/dist/client.js', import.meta.url), 'utf8')
   assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"ds-harness-remote"/)
 })
 
-test('release builds pin Harness alpha.2 while keeping our own Electron desktop', () => {
-  const harnessVersion = '0.1.6-alpha.2'
+test('release builds pin Harness rc.2 while keeping our own Electron desktop', () => {
+  const harnessVersion = '0.1.7-rc.2'
   assert.equal(packageJson.dependencies['@deepseek-ai/dsh'], harnessVersion)
   assert.equal(packageJson.dependencies['@deepseek-ai/dsh-util-time'], harnessVersion)
   assert.equal(packageLock.packages['node_modules/@deepseek-ai/dsh'].version, harnessVersion)

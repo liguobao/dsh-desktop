@@ -4,7 +4,9 @@
 
 一个独立、开源的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 桌面应用。它内置经过验证的 Harness 版本，并通过经过安全限制的 Electron 窗口在 Windows、macOS 和 Linux 本地运行。
 
-当前内置 Harness `0.1.6-alpha.2`（标签 `dsh-v0.1.6-alpha.2`）。本项目继续使用自己的 Electron 桌面方案，启动 Harness **Web** profile 并加载桌面适配插件，不使用上游的 Desktop 应用或 Desktop host。
+当前内置 Harness `0.1.7-rc.2`（标签 `dsh-v0.1.7-rc.2`）。本项目继续使用自己的 Electron 桌面方案，启动 Harness **Web** profile 并加载桌面适配插件，不使用上游的 Desktop 应用或 Desktop host。
+
+内置的 `dsh-file-viewer` 插件已移除，当前版本不再提供文件预览功能。
 
 > DSH Desktop 是社区项目，并非 DeepSeek 官方产品。DeepSeek Harness 目前仍处于开发者预览阶段，后续可能出现破坏兼容性的变更。
 
