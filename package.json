@@ -64,7 +64,7 @@
     "yaml": "2.9.0"
   },
   "devDependencies": {
-    "electron": "44.0.0",
+    "electron": "44.4.3",
     "electron-builder": "26.15.3"
   },
   "build": {
