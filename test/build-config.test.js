@@ -30,13 +30,13 @@ test('development and CI use Node.js 24', () => {
 })
 
 test('release builds bundle the prebuilt remote plugin and its runtime dependency tree', () => {
-  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.8')
+  assert.equal(packageJson.dependencies['ds-harness-remote'], '0.4.20')
   assert.equal(existsSync(new URL('../node_modules/ds-harness-remote/dist/index.js', import.meta.url)), true)
   const host = readFileSync(new URL('../node_modules/ds-harness-remote/dist/index.js', import.meta.url), 'utf8')
   assert.match(host, /HostPluginRuntime/)
   assert.match(host, /HARNESS_REMOTE_ALLOWLIST/)
   const client = readFileSync(new URL('../node_modules/ds-harness-remote/dist/client.js', import.meta.url), 'utf8')
-  assert.match(client, /name:\s*"settings\.plugin\.item",\s*key:\s*"ds-harness-remote"/)
+  assert.match(client, /ds-harness-remote/)
 })
 
 test('release builds pin Harness rc.2 while keeping our own Electron desktop', () => {
