@@ -17,6 +17,7 @@ export const MAX_PLUGIN_OUTPUT_LENGTH = 64 * 1024
 export const SYSTEM_BUNDLES = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
 const PLUGIN_INSTALL_HISTORY = '.dsh-desktop-plugin-history.json'
 const DEFAULT_PLUGIN_STATE = '.dsh-desktop-default-plugins.json'
+const BUNDLED_PLUGIN_STATE = '.dsh-desktop-bundled-plugins.json'
 const DEFAULT_NPM_REGISTRY = 'https://registry.npmjs.org/'
 const MAX_NPM_VERSION_RESPONSE_LENGTH = 64 * 1024
 
@@ -132,6 +133,24 @@ function readDefaultPluginState(profileDir) {
 
 function writeDefaultPluginState(profileDir, state) {
   writeJsonAtomic(join(profileDir, DEFAULT_PLUGIN_STATE), state)
+}
+
+function readBundledPluginState(profileDir) {
+  try {
+    const value = readJson(join(profileDir, BUNDLED_PLUGIN_STATE))
+    if (value?.version !== 1 || !Array.isArray(value.removed)) return { version: 1, removed: [] }
+    return { version: 1, removed: value.removed.filter(name => PACKAGE_NAME_PATTERN.test(name)) }
+  } catch {
+    return { version: 1, removed: [] }
+  }
+}
+
+function setBundledPluginRemoved(profileDir, packageName, removed) {
+  const state = readBundledPluginState(profileDir)
+  const names = new Set(state.removed)
+  if (removed) names.add(packageName)
+  else names.delete(packageName)
+  writeJsonAtomic(join(profileDir, BUNDLED_PLUGIN_STATE), { version: 1, removed: [...names] })
 }
 
 function defaultPluginKey(normalized) {
@@ -274,6 +293,11 @@ export async function installBundledPlugin({
   const profileDir = ensureProfileInitialized(dshHome, profile)
   const manifestPath = join(profileDir, 'package.json')
   const profileManifest = readJson(manifestPath)
+  if (packageName === 'ds-harness-remote'
+    && readBundledPluginState(profileDir).removed.includes(packageName)
+    && !Object.hasOwn(profileManifest.dependencies ?? {}, packageName)) {
+    return undefined
+  }
   const sourceManifest = readJson(join(sourceDir, 'package.json'))
   const normalized = normalizePluginSpec(spec)
   if (sourceManifest.name !== packageName || sourceManifest.dsh?.bundle?.patch === undefined) {
@@ -934,6 +958,7 @@ export async function installPlugin({
     })
   }
   if (plugin !== undefined && !previous.has(plugin.name)) recordPluginInstalled(profileDir, plugin.name)
+  if (plugin?.name === 'ds-harness-remote') setBundledPluginRemoved(profileDir, plugin.name, false)
   return {
     ...readPluginCatalog({ dshHome, profile }),
     buildScriptsIgnored: requiredBuildScriptsIgnored && !allowBuildScripts,
@@ -1070,6 +1095,7 @@ export async function removePlugin({
   })
   forgetGitHubBuildPermission(catalog.profileDir, plugin)
   forgetPluginBundle({ dshHome, name, profile })
+  if (name === 'ds-harness-remote') setBundledPluginRemoved(catalog.profileDir, name, true)
   forgetPluginInstallHistory(catalog.profileDir, name)
   return readPluginCatalog({ dshHome, profile })
 }

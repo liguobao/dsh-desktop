@@ -102,6 +102,38 @@ test('seeds the bundled remote plugin with runtime dependencies and a registry s
   )
 })
 
+
+test('does not restore the bundled remote plugin after the user uninstalls it', async (t) => {
+  const directory = temporaryDirectory(t)
+  const dshHome = join(directory, 'dsh-home')
+  const sourceDir = join(directory, 'app', 'node_modules', 'ds-harness-remote')
+  writeJson(join(sourceDir, 'package.json'), {
+    name: 'ds-harness-remote', version: '0.4.8',
+    dsh: { bundle: { patch: './cordis.patch.yml' } },
+  })
+  writeFileSync(join(sourceDir, 'index.js'), 'export {}\n')
+
+  await installBundledRemotePlugin({ dshHome, sourceDir })
+  const profileDir = join(dshHome, 'profiles', 'web')
+  await removePlugin({
+    dshHome,
+    name: 'ds-harness-remote',
+    pnpmEntry: '/pnpm.mjs',
+    runPnpmImpl: async ({ profileDir: targetDir }) => {
+      const manifestPath = join(targetDir, 'package.json')
+      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+      delete manifest.dependencies['ds-harness-remote']
+      writeJson(manifestPath, manifest)
+      rmSync(join(targetDir, 'node_modules', 'ds-harness-remote'), { recursive: true, force: true })
+      return { output: '' }
+    },
+  })
+
+  assert.equal(await installBundledRemotePlugin({ dshHome, sourceDir }), undefined)
+  assert.equal(readPluginCatalog({ dshHome }).plugins.length, 0)
+  assert.equal(existsSync(join(profileDir, '.dsh-desktop-bundled-plugins.json')), true)
+})
+
 test('seeds the bundled remote plugin when an older release marked the default as seen', async (t) => {
   const directory = temporaryDirectory(t)
   const dshHome = join(directory, 'dsh-home')
