@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop",
-  "version": "0.1.66",
+  "version": "0.1.67",
   "description": "Community desktop wrapper for the DeepSeek Harness Web UI",
   "type": "module",
   "main": "src/main.js",
@@ -58,7 +58,7 @@
     "@deepseek-ai/dsh-util-time": "0.1.7-rc.2",
     "@deepseek-ai/dsh-util-workspace-path": "0.1.7-rc.2",
     "@deepseek-ai/dsh-workflow": "0.1.7-rc.2",
-    "ds-harness-remote": "0.4.20",
+    "ds-harness-remote": "0.4.21",
     "pnpm": "11.24.0",
     "semver": "7.8.5",
     "yaml": "2.9.0"
