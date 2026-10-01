@@ -2,6 +2,8 @@
 
 > **推荐插件：[ds-harness-remote](https://github.com/liguobao/ds-harness-remote)**，支持从另一台电脑、手机或浏览器继续 Harness 会话，兼容官方 DeepSeek Harness 桌面版。安装方式见[插件安装指南](https://github.com/liguobao/ds-harness-remote#install)。
 
+**Android 客户端：**[下载 ds-harness-remote APK（v0.4.27）](https://github.com/liguobao/ds-harness-remote/releases/download/v0.4.27/dsh-remote-android-v0.4.27.apk) · [获取最新版本](https://github.com/liguobao/ds-harness-remote/releases/latest)
+
 > **本项目已归档，停止维护。** 推荐使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)，安装和使用方式请参考[官方文档](https://deepseek-harness.github.io/deepseek-harness/)。本仓库及已有发布版本仅作为历史资料保留，后续不再提供更新或修复。
 
 简体中文 | [English](README.md)

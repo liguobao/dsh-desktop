@@ -2,6 +2,8 @@
 
 > **Recommended plugin: [ds-harness-remote](https://github.com/liguobao/ds-harness-remote)** — continue your Harness sessions from another computer, phone, or browser. It supports the official DeepSeek Harness desktop edition; see the [installation guide](https://github.com/liguobao/ds-harness-remote#install).
 
+**Android client:** [Download ds-harness-remote APK (v0.4.27)](https://github.com/liguobao/ds-harness-remote/releases/download/v0.4.27/dsh-remote-android-v0.4.27.apk) · [Latest version](https://github.com/liguobao/ds-harness-remote/releases/latest)
+
 > **Archived — no longer maintained.** We recommend using the official [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Follow its [official documentation](https://deepseek-harness.github.io/deepseek-harness/) for setup and usage. This repository and its existing releases are preserved for historical reference; no further updates or fixes are planned.
 
 [简体中文](README.zh-CN.md) | English
