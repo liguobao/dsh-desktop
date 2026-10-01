@@ -1,12 +1,16 @@
 # DSH Desktop
 
+> **Recommended plugin: [ds-harness-remote](https://github.com/liguobao/ds-harness-remote)** — continue your Harness sessions from another computer, phone, or browser. It supports the official DeepSeek Harness desktop edition; see the [installation guide](https://github.com/liguobao/ds-harness-remote#install).
+
+> **Archived — no longer maintained.** We recommend using the official [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Follow its [official documentation](https://deepseek-harness.github.io/deepseek-harness/) for setup and usage. This repository and its existing releases are preserved for historical reference; no further updates or fixes are planned.
+
 [简体中文](README.zh-CN.md) | English
+
+The following documentation describes the archived community app.
 
 An independent, open-source desktop app for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It bundles a tested Harness version and runs it locally in a hardened Electron window on Windows, macOS, and Linux.
 
 The bundled Harness version is `0.2.0-rc.1` (`dsh-v0.2.0-rc.1`). This project keeps its own Electron application, launching the Harness **Web** profile with the Desktop integration adapter. It does not use upstream's Desktop application or Desktop host.
-
-The bundled `dsh-file-viewer` plugin has been removed; file preview is no longer included.
 
 The bundled `dsh-file-viewer` plugin has been removed; file preview is no longer included.
 
@@ -22,9 +26,9 @@ The bundled `dsh-file-viewer` plugin has been removed; file preview is no longer
 - Local-only Harness service, restricted Electron renderers, and external links opened in the system browser.
 - Built-in update checks for new DSH Desktop releases with SHA-256 verification.
 
-## Download
+## Historical downloads
 
-Download the latest version from [GitHub Releases](https://github.com/liguobao/dsh-desktop/releases).
+Existing versions remain available from [GitHub Releases](https://github.com/liguobao/dsh-desktop/releases). These are archived community builds and will not receive further updates. For new installations, use the official [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
 
 For downloads in mainland China, use [Quark Cloud Drive / 夸克网盘](https://pan.quark.cn/s/a837649635e2#/list/share/b4cc08109f3d47f78bc816ef2dbecd4f).
 

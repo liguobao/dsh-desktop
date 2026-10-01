@@ -1,6 +1,12 @@
 # DSH Desktop
 
+> **推荐插件：[ds-harness-remote](https://github.com/liguobao/ds-harness-remote)**，支持从另一台电脑、手机或浏览器继续 Harness 会话，兼容官方 DeepSeek Harness 桌面版。安装方式见[插件安装指南](https://github.com/liguobao/ds-harness-remote#install)。
+
+> **本项目已归档，停止维护。** 推荐使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)，安装和使用方式请参考[官方文档](https://deepseek-harness.github.io/deepseek-harness/)。本仓库及已有发布版本仅作为历史资料保留，后续不再提供更新或修复。
+
 简体中文 | [English](README.md)
+
+以下文档介绍的是已归档的社区桌面应用。
 
 一个独立、开源的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 桌面应用。它内置经过验证的 Harness 版本，并通过经过安全限制的 Electron 窗口在 Windows、macOS 和 Linux 本地运行。
 
@@ -20,9 +26,9 @@
 - Harness 服务仅监听本机，Electron 渲染进程受限，外部链接交给系统浏览器。
 - 自动检查新版 DSH Desktop，并对下载的安装包进行 SHA-256 校验。
 
-## 下载
+## 历史版本下载
 
-从 [GitHub Releases](https://github.com/liguobao/dsh-desktop/releases) 下载最新版本。
+已有版本仍可从 [GitHub Releases](https://github.com/liguobao/dsh-desktop/releases) 下载。这些社区构建已停止更新，新安装请使用官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)。
 
 中国大陆用户可使用 [Quark Cloud Drive / 夸克网盘](https://pan.quark.cn/s/a837649635e2#/list/share/b4cc08109f3d47f78bc816ef2dbecd4f) 下载。
 
